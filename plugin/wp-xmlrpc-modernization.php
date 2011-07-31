@@ -57,7 +57,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server, $wp_roles;
 		$wp_xmlrpc_server->escape($args);
 
-		$blog_ID        = (int) $args[0]; // for future use
+		$blog_id        = (int) $args[0]; // for future use
 		$username       = $args[1];
 		$password       = $args[2];
 		$content_struct = $args[3];
@@ -148,7 +148,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server, $wp_roles;
 		$wp_xmlrpc_server->escape( $args );
 
-		$blog_ID        = (int) $args[0];
+		$blog_id        = (int) $args[0];
 		$user_ID        = (int) $args[1];
 		$username       = $args[2];
 		$password       = $args[3];
@@ -250,7 +250,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
 
-		$blog_ID    = (int) $args[0];
+		$blog_id    = (int) $args[0];
 		$username   = $args[1];
 		$password   = $args[2];
 		$user_IDs   = $args[3]; // can be an array of user ID's
@@ -297,7 +297,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
 
-		$blog_ID    = (int) $args[0];
+		$blog_id    = (int) $args[0];
 		$username   = $args[1];
 		$password   = $args[2];
 		$user_ID    = (int) $args[3];
@@ -345,7 +345,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
 
-		$blog_ID    = (int) $args[0];
+		$blog_id    = (int) $args[0];
 		$username   = $args[1];
 		$password   = $args[2];
 		$filter     = $args[3];
@@ -426,7 +426,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape($args);
 
-		$blog_ID        = (int) $args[0]; // for future use
+		$blog_id        = (int) $args[0]; // for future use
 		$username       = $args[1];
 		$password       = $args[2];
 		$content_struct = $args[3];
@@ -1397,7 +1397,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
 
-		$blog_ID    = (int) $args[0];
+		$blog_id    = (int) $args[0];
 		$username   = $args[1];
 		$password   = $args[2];
 		$filter     = $args[3];
@@ -1557,7 +1557,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
 
-		$blog_ID            = (int) $args[0];
+		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
 		$post_ID            = (int) $args[3];
@@ -1590,7 +1590,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape($args);
 
-		$blog_ID            = (int) $args[0];
+		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
 		$post_ID            = (int) $args[3];
@@ -1652,7 +1652,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
 
-		$blog_ID        = (int) $args[0];
+		$blog_id        = (int) $args[0];
 		$username       = $args[1];
 		$password       = $args[2];
 		$post_type_name = $args[3];
@@ -1693,7 +1693,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
 
-		$blog_ID            = (int) $args[0];
+		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
 
@@ -1736,7 +1736,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
 
-		$blog_ID            = (int) $args[0];
+		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
 		$content_struct     = $args[3];
@@ -1804,7 +1804,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
 
-		$blog_ID            = (int) $args[0];
+		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
 		$term_ID            = (int)$args[3];
@@ -1884,7 +1884,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
 
-		$blog_ID            = (int) $args[0];
+		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
 		$term_ID            = (int)$args[3];
@@ -1928,7 +1928,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
 
-		$blog_ID            = (int) $args[0];
+		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
 		$term_ID            = (int)$args[3];
@@ -1962,7 +1962,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
 
-		$blog_ID            = (int) $args[0];
+		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
 		$content_struct     = $args[3];
@@ -1995,7 +1995,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
 
-		$blog_ID        = (int) $args[0];
+		$blog_id        = (int) $args[0];
 		$username       = $args[1];
 		$password       = $args[2];
 		$taxonomy_name  = $args[3];
@@ -2032,7 +2032,7 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
 
-		$blog_ID            = (int) $args[0];
+		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
 
