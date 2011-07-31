@@ -1,0 +1,8 @@
+As part of WordPress's Google Summer of Code 2011, Prasath Nadarajah worked on enhancements to WordPress'
+XML-RPC API. His code can be found at http://gsoc.svn.wordpress.org/2011/nprasath002/, and blog reports
+at http://gsoc2011.wordpress.com/tag/wp-webservices/.
+
+Using Prasath's work as a starting point, this project's goal is to create a patch ready for integration
+into WordPress core. The WP XML-RPC API has fallen behind the core feature set of WordPress, missing
+features like Custom Post Types and Custom Taxonomies. Such disparity is holding back possibilities in
+the mobile apps and in integration with other software.
