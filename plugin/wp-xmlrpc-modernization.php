@@ -344,7 +344,8 @@ class wp_xmlrpc_server_ext {
 
 	}
 
-	function wp_getUsers( $args ) {
+	function wp_getUsers( $args ) { // +
+		$raw_args = $args;
 
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
@@ -358,11 +359,18 @@ class wp_xmlrpc_server_ext {
 			return $wp_xmlrpc_server->error;
 
 		if( ! current_user_can( 'edit_users' ))
-			return new IXR_Error( 401, __( 'Sorry, you cannot edit this users.' ) );
+			return new IXR_Error( 401, __( 'Sorry, you cannot edit users.' ) );
 
 		$query = array();
 
+		// only retrieve IDs since wp_getUser will ignore anything else
+		$query['fields'] = array( 'ID' );
+
+		$query['number'] = ( isset( $filter['number'] ) ) ? absint( $filter['number'] ) : 50;
+		$query['offset'] = ( isset( $filter['offset'] ) ) ? absint( $filter['offset'] ) : 0;
+
 		if ( isset( $filter['role'] ) ) {
+			global $wp_roles;
 
 			if( ! isset ( $wp_roles ) )
 				$wp_roles = new WP_Roles ();
@@ -371,39 +379,19 @@ class wp_xmlrpc_server_ext {
 				return new IXR_Error( 403, __( 'The role specified is not valid' ) );
 
 			$query['role'] = $filter['role'];
-
 		}
-
-		$query['number'] = 50; // default value for querying users
-		if ( isset( $filter['numberusers'] ) )
-			$query['number'] = absint( $filter['numberusers'] );
 
 		$users = get_users( $query );
 
 		if ( ! $users )
-			return array( );
+			return array();
 
-		// holds all the user data
-		$struct = array();
+		$users_struct = array();
 
-		foreach ( $users as $user_data ) {
+		foreach ($users as $user_data)
+			$users_struct[] = $this->wp_getUser( array( $raw_args[0], $raw_args[1], $raw_args[2], $user_data->ID) );
 
-			$user_data = (array) $user_data;
-
-			$struct[] = array(
-				'user_ID'           => $user_data['ID'],
-				'username'          => $user_data['user_login'],
-				'registered_date'   => $user_data['user_registered'],
-				'email'             => $user_data['user_email'],
-				'website'           => $user_data['user_url'],
-				'displayname'       => $user_data['display_name'],
-				'user_nicename'     => $user_data['user_nicename'],
-			);
-
-		}
-
-		return $struct;
-
+		return $users_struct;
 	}
 
 	/**
