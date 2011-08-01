@@ -145,9 +145,9 @@ class wp_xmlrpc_server_ext {
 		$wp_xmlrpc_server->escape( $args );
 
 		$blog_id        = (int) $args[0];
-		$user_ID        = (int) $args[1];
-		$username       = $args[2];
-		$password       = $args[3];
+		$username       = $args[1];
+		$password       = $args[2];
+		$user_ID        = (int) $args[3];
 		$content_struct = $args[4];
 
 		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
