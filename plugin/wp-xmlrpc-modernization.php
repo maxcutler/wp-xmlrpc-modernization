@@ -313,6 +313,9 @@ class wp_xmlrpc_server_ext {
 		if( ! ( $user_id == $user->ID || current_user_can( 'edit_users' ) ))
 			return new IXR_Error( 401, __( 'Sorry, you cannot edit users.' ) );
 
+		// Format registered date
+		$registered_date = mysql2date('Ymd\TH:i:s', $user_data->user_registered, false);
+
 		$contact_methods = _wp_get_user_contactmethods();
 
 		$user_contacts = array();
@@ -325,7 +328,7 @@ class wp_xmlrpc_server_ext {
 			'username'          => $user_data->user_login,
 			'firstname'         => $user_data->user_firstname,
 			'lastname'          => $user_data->user_lastname,
-			'registered'        => $user_data->user_registered,
+			'registered'        => new IXR_Date($registered_date),
 			'description'       => $user_data->user_description,
 			'email'             => $user_data->user_email,
 			'nickname'          => $user_data->nickname,
