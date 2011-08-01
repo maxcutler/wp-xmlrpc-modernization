@@ -117,12 +117,12 @@ class wp_xmlrpc_server_ext {
 		}
 
 		$user_data['first_name'] = '';
-		if( isset ( $content_struct['firstname'] ) )
-			$user_data['first_name'] = $content_struct['firstname'];
+		if( isset ( $content_struct['first_name'] ) )
+			$user_data['first_name'] = $content_struct['first_name'];
 
 		$user_data['last_name'] = '';
-		if( isset ( $content_struct['lastname'] ) )
-			$user_data['last_name'] = $content_struct['lastname'];
+		if( isset ( $content_struct['last_name'] ) )
+			$user_data['last_name'] = $content_struct['last_name'];
 
 		$user_data['user_url'] = '';
 		if( isset ( $content_struct['url'] ) )
@@ -197,11 +197,11 @@ class wp_xmlrpc_server_ext {
 		}
 
 		// only set the user details if it was given
-		if ( isset( $content_struct['firstname'] ) )
-			$user_data['first_name'] = $content_struct['firstname'];
+		if ( isset( $content_struct['first_name'] ) )
+			$user_data['first_name'] = $content_struct['first_name'];
 
-		if ( isset( $content_struct['lastname'] ) )
-			$user_data['last_name'] = $content_struct['lastname'];
+		if ( isset( $content_struct['last_name'] ) )
+			$user_data['last_name'] = $content_struct['last_name'];
 
 		if ( isset( $content_struct['website'] ) )
 			$user_data['user_url'] = $content_struct['url'];
@@ -321,8 +321,8 @@ class wp_xmlrpc_server_ext {
 		$struct = array(
 			'user_id'           => $user_data->ID,
 			'username'          => $user_data->user_login,
-			'firstname'         => $user_data->user_firstname,
-			'lastname'          => $user_data->user_lastname,
+			'first_name'         => $user_data->user_firstname,
+			'last_name'          => $user_data->user_lastname,
 			'registered'        => new IXR_Date($registered_date),
 			'bio'               => $user_data->user_description,
 			'email'             => $user_data->user_email,
