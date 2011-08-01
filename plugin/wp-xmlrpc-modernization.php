@@ -353,7 +353,7 @@ class wp_xmlrpc_server_ext {
 		$blog_id    = (int) $args[0];
 		$username   = $args[1];
 		$password   = $args[2];
-		$filter     = $args[3];
+		$filter     = isset( $args[3] ) ? $args[3] : array();
 
 		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
 			return $wp_xmlrpc_server->error;
