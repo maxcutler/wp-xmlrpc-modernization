@@ -292,7 +292,7 @@ class wp_xmlrpc_server_ext {
 
 	}
 
-	function wp_getUser( $args ) {
+	function wp_getUser( $args ) { // +
 
 		global $wp_xmlrpc_server;
 		$wp_xmlrpc_server->escape( $args );
@@ -300,40 +300,41 @@ class wp_xmlrpc_server_ext {
 		$blog_id    = (int) $args[0];
 		$username   = $args[1];
 		$password   = $args[2];
-		$user_ID    = (int) $args[3];
+		$user_id    = (int) $args[3];
 
 		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
 			return $wp_xmlrpc_server->error;
 
-		$user_data = get_userdata( $user_ID );
+		$user_data = get_userdata( $user_id );
 
 		if( ! $user_data )
 			return new IXR_Error(404, __('Invalid user ID'));
 
-		if( ! ( $user_ID == $user->ID || current_user_can( 'edit_users' ) ))
+		if( ! ( $user_id == $user->ID || current_user_can( 'edit_users' ) ))
 			return new IXR_Error( 401, __( 'Sorry, you cannot edit users.' ) );
 
-		$user_data = (array)$user_data;
-
 		$contact_methods = _wp_get_user_contactmethods();
+
+		$user_contacts = array();
 		foreach( $contact_methods as $key => $value ) {
-			$user_contacts[ $key ] = $user_data[ $key ];
+			$user_contacts[ $key ] = $user_data->$key;
 		}
 
 		$struct = array(
-			'username'          => $user_data['user_login'],
-			'firstname'         => $user_data['user_firstname'],
-			'lastname'          => $user_data['user_lastname'],
-			'registered_date'   => $user_data['user_registered'],
-			'bio'               => $user_data['user_description'],
-			'email'             => $user_data['user_email'],
-			'nickname'          => $user_data['nickname'],
-			'nicename'          => $user_data['user_nicename'],
-			'website'           => $user_data['user_url'],
-			'displayname'       => $user_data['display_name'],
-			'capabilities'      => $user_data['wp_capabilities'],
-			'wp_user_level'     => $user_data['wp_user_level'],
-			'usercontacts'      => $user_contacts,
+			'user_id'           => $user_data->ID,
+			'username'          => $user_data->user_login,
+			'firstname'         => $user_data->user_firstname,
+			'lastname'          => $user_data->user_lastname,
+			'registered'        => $user_data->user_registered,
+			'description'       => $user_data->user_description,
+			'email'             => $user_data->user_email,
+			'nickname'          => $user_data->nickname,
+			'nicename'          => $user_data->user_nicename,
+			'url'               => $user_data->user_url,
+			'display_name'      => $user_data->display_name,
+			'capabilities'      => $user_data->wp_capabilities,
+			'user_level'        => $user_data->wp_user_level,
+			'user_contacts'     => $user_contacts,
 		);
 
 		return $struct;
