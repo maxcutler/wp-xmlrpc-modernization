@@ -66,7 +66,7 @@ class wp_xmlrpc_server_ext {
 			return $wp_xmlrpc_server->error;
 
 		if ( ! current_user_can( 'create_users' ) )
-			return new IXR_Error( 401, __( 'You are not allowed to create users' ) );
+			return new IXR_Error( 401, __( 'You are not allowed to create users.' ) );
 
 		// this hold all the user data
 		$user_data = array();
@@ -82,19 +82,19 @@ class wp_xmlrpc_server_ext {
 		}
 
 		if( empty ( $user_data['user_login'] ) )
-			return new IXR_Error( 403, __( 'Cannot create a user with an empty login name. ' ) );
+			return new IXR_Error( 403, __( 'Cannot create a user with an empty login name.' ) );
 		if( username_exists ( $user_data['user_login'] ) )
 			return new IXR_Error( 403, __( 'This username is already registered.' ) );
 
 		//password cannot be empty
 		if( empty ( $content_struct['password'] ) )
-			return new IXR_Error( 403, __( 'password cannot be empty' ) );
+			return new IXR_Error( 403, __( 'Password cannot be empty.' ) );
 
 		$user_data['user_pass'] = $content_struct['password'];
 
 		// check whether email address is valid
 		if( ! is_email( $content_struct['email'] ) )
-			return new IXR_Error( 403, __( 'email id is not valid' ) );
+			return new IXR_Error( 403, __( 'This email address is not valid' ) );
 
 		// check whether it is already registered
 		if( email_exists( $content_struct['email'] ) )
@@ -134,7 +134,7 @@ class wp_xmlrpc_server_ext {
 			return new IXR_Error( 500, $user_id->get_error_message() );
 
 		if ( ! $user_id )
-			return new IXR_Error( 500, __( 'Sorry, your entry could not be posted. Something wrong happened.' ) );
+			return new IXR_Error( 500, __( 'Sorry, the new user failed.' ) );
 
 		return $user_id;
 	}
@@ -156,7 +156,7 @@ class wp_xmlrpc_server_ext {
 		$user_info = get_userdata( $user_ID );
 
 		if( ! $user_info )
-			return new IXR_Error(404, __('Invalid user ID'));
+			return new IXR_Error(404, __('Invalid user ID.'));
 
 		if( ! ( $user_ID == $user->ID || current_user_can( 'edit_users' ) ) )
 			return new IXR_Error(401, __('Sorry, you cannot edit this user.'));
@@ -165,17 +165,17 @@ class wp_xmlrpc_server_ext {
 		$user_data = array();
 		$user_data['ID'] = $user_ID;
 
-		if ( isset( $content_struct['username'] ) )
-			return new IXR_Error(401, __('Username cannot be changed'));
+		if ( isset( $content_struct['username'] ) && $content_struct['username'] !== $user_info->user_login )
+			return new IXR_Error(401, __('Username cannot be changed.'));
 
 		if ( isset( $content_struct['email'] ) ) {
 
 			if( ! is_email( $content_struct['email'] ) )
-				return new IXR_Error( 403, __( 'Email id is not valid' ) );
+				return new IXR_Error( 403, __( 'This email address is not valid.' ) );
 
 			// check whether it is already registered
-			if( email_exists( $content_struct['email'] ) )
-				return new IXR_Error( 403, __( 'This email address is already registered' ) );
+			if( $content_struct['email'] !== $user_info->user_email && email_exists( $content_struct['email'] ) )
+				return new IXR_Error( 403, __( 'This email address is already registered.' ) );
 
 			$user_data['user_email'] = $content_struct['email'];
 
