@@ -125,8 +125,8 @@ class wp_xmlrpc_server_ext {
 			$user_data['last_name'] = $content_struct['lastname'];
 
 		$user_data['user_url'] = '';
-		if( isset ( $content_struct['website'] ) )
-			$user_data['user_url'] = $content_struct['website'];
+		if( isset ( $content_struct['url'] ) )
+			$user_data['user_url'] = $content_struct['url'];
 
 		$user_id = wp_insert_user( $user_data );
 
@@ -204,26 +204,21 @@ class wp_xmlrpc_server_ext {
 			$user_data['last_name'] = $content_struct['lastname'];
 
 		if ( isset( $content_struct['website'] ) )
-			$user_data['user_url'] = $content_struct['website'];
+			$user_data['user_url'] = $content_struct['url'];
 
 		if ( isset( $content_struct['nickname'] ) )
 			$user_data['nickname'] = $content_struct['nickname'];
 
 		if ( isset( $content_struct['usernicename'] ) )
-			$user_data['user_nicename'] = $content_struct['usernicename'];
+			$user_data['user_nicename'] = $content_struct['nicename'];
 
 		if ( isset( $content_struct['bio'] ) )
 			$user_data['description'] = $content_struct['bio'];
 
-		if( isset ( $content_struct['usercontacts'] ) ) {
-
-			$user_contacts = _wp_get_user_contactmethods( $user_data );
-			foreach( $content_struct['usercontacts'] as $key => $value ) {
-
-				if( ! array_key_exists( $key, $user_contacts ) )
-					return new IXR_Error( 401, __( 'One of the contact method specified is not valid' ) );
-
-				$user_data[ $key ] = $value;
+		$contact_methods = _wp_get_user_contactmethods();
+		foreach( $contact_methods as $key => $value ) {
+			if ( isset ( $content_struct[$key] ) ) {
+				$user_data[$key] = $content_struct[$key];
 			}
 		}
 
@@ -280,12 +275,11 @@ class wp_xmlrpc_server_ext {
 
 			$result = wp_delete_user( $user_ID );
 			if ( $result )
-			$deleted_users[] = $user_ID;
+				$deleted_users[] = $user_ID;
 
 		}
 
 		return $deleted_users;
-
 	}
 
 	function wp_getUser( $args ) { // +
@@ -312,32 +306,28 @@ class wp_xmlrpc_server_ext {
 		// Format registered date
 		$registered_date = mysql2date('Ymd\TH:i:s', $user_data->user_registered, false);
 
-		$contact_methods = _wp_get_user_contactmethods();
-
-		$user_contacts = array();
-		foreach( $contact_methods as $key => $value ) {
-			$user_contacts[ $key ] = $user_data->$key;
-		}
-
 		$struct = array(
-			'id'                => $user_data->ID,
-			'user_login'        => $user_data->user_login,
-			'user_firstname'    => $user_data->user_firstname,
-			'user_lastname'     => $user_data->user_lastname,
-			'user_registered'   => new IXR_Date($registered_date),
-			'user_description'  => $user_data->user_description,
-			'user_email'        => $user_data->user_email,
+			'user_id'           => $user_data->ID,
+			'username'          => $user_data->user_login,
+			'firstname'         => $user_data->user_firstname,
+			'lastname'          => $user_data->user_lastname,
+			'registered'        => new IXR_Date($registered_date),
+			'bio'               => $user_data->user_description,
+			'email'             => $user_data->user_email,
 			'nickname'          => $user_data->nickname,
-			'user_nicename'     => $user_data->user_nicename,
-			'user_url'          => $user_data->user_url,
+			'nicename'          => $user_data->user_nicename,
+			'url'               => $user_data->user_url,
 			'display_name'      => $user_data->display_name,
-			'wp_capabilities'   => $user_data->wp_capabilities,
-			'wp_user_level'     => $user_data->wp_user_level,
-			'user_contacts'     => $user_contacts,
+			'capabilities'      => $user_data->wp_capabilities,
+			'user_level'     => $user_data->wp_user_level,
 		);
 
-		return $struct;
+		$contact_methods = _wp_get_user_contactmethods();
+		foreach( $contact_methods as $key => $value ) {
+			$struct[ $key ] = $user_data->$key;
+		}
 
+		return $struct;
 	}
 
 	function wp_getUsers( $args ) { // +
