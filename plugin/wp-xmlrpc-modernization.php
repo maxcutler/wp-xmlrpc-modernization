@@ -57,11 +57,10 @@ class wp_xmlrpc_server_ext {
 		global $wp_xmlrpc_server, $wp_roles;
 		$wp_xmlrpc_server->escape($args);
 
-		$blog_id        = (int) $args[0]; // for future use
+		$blog_id        = (int) $args[0];
 		$username       = $args[1];
 		$password       = $args[2];
 		$content_struct = $args[3];
-		$send_mail      = isset( $args[4] ) ? $args[4] : false;
 
 		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
 			return $wp_xmlrpc_server->error;
@@ -137,10 +136,7 @@ class wp_xmlrpc_server_ext {
 		if ( ! $user_id )
 			return new IXR_Error( 500, __( 'Sorry, your entry could not be posted. Something wrong happened.' ) );
 
-		// confirmation mail
-
-		return strval($user_id);
-
+		return $user_id;
 	}
 
 	function wp_editUser( $args ) {
