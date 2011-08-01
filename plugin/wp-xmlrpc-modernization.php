@@ -324,19 +324,19 @@ class wp_xmlrpc_server_ext {
 		}
 
 		$struct = array(
-			'userid'           => $user_data->ID,
-			'username'          => $user_data->user_login,
-			'firstname'         => $user_data->user_firstname,
-			'lastname'          => $user_data->user_lastname,
-			'registered'        => new IXR_Date($registered_date),
-			'description'       => $user_data->user_description,
-			'email'             => $user_data->user_email,
+			'id'                => $user_data->ID,
+			'user_login'        => $user_data->user_login,
+			'user_firstname'    => $user_data->user_firstname,
+			'user_lastname'     => $user_data->user_lastname,
+			'user_registered'   => new IXR_Date($registered_date),
+			'user_description'  => $user_data->user_description,
+			'user_email'        => $user_data->user_email,
 			'nickname'          => $user_data->nickname,
-			'nicename'          => $user_data->user_nicename,
-			'url'               => $user_data->user_url,
+			'user_nicename'     => $user_data->user_nicename,
+			'user_url'          => $user_data->user_url,
 			'display_name'      => $user_data->display_name,
-			'capabilities'      => $user_data->wp_capabilities,
-			'user_level'        => $user_data->wp_user_level,
+			'wp_capabilities'   => $user_data->wp_capabilities,
+			'wp_user_level'     => $user_data->wp_user_level,
 			'user_contacts'     => $user_contacts,
 		);
 
