@@ -324,7 +324,7 @@ class wp_xmlrpc_server_ext {
 		}
 
 		$struct = array(
-			'user_id'           => $user_data->ID,
+			'userid'           => $user_data->ID,
 			'username'          => $user_data->user_login,
 			'firstname'         => $user_data->user_firstname,
 			'lastname'          => $user_data->user_lastname,
