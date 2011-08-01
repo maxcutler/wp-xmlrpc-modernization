@@ -215,10 +215,15 @@ class wp_xmlrpc_server_ext {
 		if ( isset( $content_struct['bio'] ) )
 			$user_data['description'] = $content_struct['bio'];
 
-		$contact_methods = _wp_get_user_contactmethods();
-		foreach( $contact_methods as $key => $value ) {
-			if ( isset ( $content_struct[$key] ) ) {
-				$user_data[$key] = $content_struct[$key];
+		if( isset ( $content_struct['user_contacts'] ) ) {
+
+			$user_contacts = _wp_get_user_contactmethods( $user_data );
+			foreach( $content_struct['user_contacts'] as $key => $value ) {
+
+				if( ! array_key_exists( $key, $user_contacts ) )
+					return new IXR_Error( 401, __( 'One of the contact method specified is not valid' ) );
+
+				$user_data[ $key ] = $value;
 			}
 		}
 
@@ -306,6 +311,13 @@ class wp_xmlrpc_server_ext {
 		// Format registered date
 		$registered_date = mysql2date('Ymd\TH:i:s', $user_data->user_registered, false);
 
+		$contact_methods = _wp_get_user_contactmethods();
+
+		$user_contacts = array();
+		foreach( $contact_methods as $key => $value ) {
+			$user_contacts[ $key ] = $user_data->$key;
+		}
+
 		$struct = array(
 			'user_id'           => $user_data->ID,
 			'username'          => $user_data->user_login,
@@ -319,13 +331,9 @@ class wp_xmlrpc_server_ext {
 			'url'               => $user_data->user_url,
 			'display_name'      => $user_data->display_name,
 			'capabilities'      => $user_data->wp_capabilities,
-			'user_level'     => $user_data->wp_user_level,
+			'user_level'        => $user_data->wp_user_level,
+			'user_contacts'     => $user_contacts
 		);
-
-		$contact_methods = _wp_get_user_contactmethods();
-		foreach( $contact_methods as $key => $value ) {
-			$struct[ $key ] = $user_data->$key;
-		}
 
 		return $struct;
 	}
