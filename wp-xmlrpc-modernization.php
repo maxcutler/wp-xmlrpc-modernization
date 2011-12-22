@@ -52,6 +52,27 @@ class wp_xmlrpc_server_ext {
 
 	}
 
+	/**
+	 * Create a new user
+	 *
+	 * @uses wp_insert_user()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - array     $content_struct.
+	 *      The $content_struct must contain:
+	 *      - 'username'
+	 *      - 'password'
+	 *      - 'email'
+	 *      Also, it can optionally contain:
+	 *      - 'role'
+	 *      - 'first_name'
+	 *      - 'last_name'
+	 *      - 'website'
+	 *  - boolean $send_mail optional. Defaults to false
+	 * @return string user_id
+	 */
 	function wp_newUser( $args ) {
 
 		global $wp_xmlrpc_server, $wp_roles;
@@ -139,6 +160,30 @@ class wp_xmlrpc_server_ext {
 		return $user_id;
 	}
 
+	/**
+	 * Edit a new user
+	 *
+	 * @uses wp_update_user()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - int     $user_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - array     $content_struct.
+	 *      It can optionally contain:
+	 *      - 'email'
+	 *      - 'first_name'
+	 *      - 'last_name'
+	 *      - 'website'
+	 *      - 'role'
+	 *      - 'nickname'
+	 *      - 'usernicename'
+	 *      - 'bio'
+	 *      - 'usercontacts'
+	 *      - 'password'
+	 *  - boolean $send_mail optional. Defaults to false
+	 * @return string user_id
+	 */
 	function wp_editUser( $args ) {
 
 		global $wp_xmlrpc_server, $wp_roles;
@@ -241,6 +286,17 @@ class wp_xmlrpc_server_ext {
 		return $result;
 	}
 
+	/**
+	 * Delete a  post
+	 *
+	 * @uses wp_delete_user()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - array   $user_ids
+	 * @return array user_ids
+	 */
 	function wp_deleteUser( $args ) {
 
 		global $wp_xmlrpc_server;
@@ -287,6 +343,28 @@ class wp_xmlrpc_server_ext {
 		return $deleted_users;
 	}
 
+	/**
+	 * Retrieve  user
+	 *
+	 * @uses get_userdata()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - int     $user_id
+	 * @return array contains:
+	 *  - 'user_login'
+	 *  - 'user_firstname'
+	 *  - 'user_lastname'
+	 *  - 'user_registered'
+	 *  - 'user_description'
+	 *  - 'user_email'
+	 *  - 'nickname'
+	 *  - 'user_nicename'
+	 *  - 'user_url'
+	 *  - 'display_name'
+	 *  - 'usercontacts'
+	 */
 	function wp_getUser( $args ) { // +
 
 		global $wp_xmlrpc_server;
@@ -338,6 +416,24 @@ class wp_xmlrpc_server_ext {
 		return $struct;
 	}
 
+	/**
+	 * Retrieve  users
+	 *
+	 * @uses get_users()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - array   $filter optional
+	 * @return array contatins:
+	 *  - 'ID'
+	 *  - 'user_login'
+	 *  - 'user_registered'
+	 *  - 'user_email'
+	 *  - 'user_url'
+	 *  - 'display_name'
+	 *  - 'user_nicename'
+	 */
 	function wp_getUsers( $args ) { // +
 		$raw_args = $args;
 
@@ -396,16 +492,34 @@ class wp_xmlrpc_server_ext {
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
-	 *  - map     $content_struct.
+	 *  - array     $content_struct.
 	 *      The $content_struct must contain:
 	 *      - 'post_type'
 	 *      Also, it can optionally contain:
 	 *      - 'post_status'
 	 *      - 'wp_password'
 	 *      - 'wp_slug
-	 *      -
+	 *      - 'wp_page_order'
+	 *      - 'wp_page_parent_id'
+	 *      - 'wp_page_template'
+	 *      - 'wp_author_id'
+	 *      - 'title'
+	 *      - 'description'
+	 *      - 'mt_excerpt'
+	 *      - 'mt_allow_comments'
+	 *      - 'mt_allow_pings'
+	 *      - 'mt_text_more'
+	 *      - 'mt_tb_ping_urls'
+	 *      - 'date_created_gmt'
+	 *      - 'dateCreated'
+	 *      - 'sticky'
+	 *      - 'custom_fields'
+	 *      - 'terms'
+	 *      - 'categories'
+	 *      - 'mt_keywords'
+	 *      - 'wp_post_format'
 	 *  - boolean $publish optional. Defaults to true
-	 * @return
+	 * @return string post_id
 	 */
 	function wp_newPost( $args ) {
 
@@ -822,6 +936,18 @@ class wp_xmlrpc_server_ext {
 
 	}
 
+	/**
+	 * Edit a  post
+	 *
+	 * @uses wp_update_post()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $post_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - array     $content_struct
+	 *  - boolean $publish optional. Defaults to true
+	 * @return string post_id
+	 */
 	function wp_editPost($args) {
 
 		global $wp_xmlrpc_server;
@@ -1207,6 +1333,16 @@ class wp_xmlrpc_server_ext {
 
 	}
 
+	/**
+	 * Delete a  post
+	 *
+	 * @uses wp_delete_post()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $post_ids
+	 *  - string  $username
+	 *  - string  $password
+	 * @return array post_ids
+	 */
 	function wp_deletePost( $args ) {
 
 		global $wp_xmlrpc_server;
@@ -1251,6 +1387,40 @@ class wp_xmlrpc_server_ext {
 
 	}
 
+	/**
+	 * Retrieve  post
+	 *
+	 * @uses wp_get_single_post()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $post_id
+	 *  - string  $username
+	 *  - string  $password
+	 * @return array contains:
+	 *  - 'postid'
+	 *  - 'title'
+	 *  - 'description'
+	 *  - 'mt_excerpt'
+	 *  - 'post_status'
+	 *  - 'post_type'
+	 *  - 'wp_slug'
+	 *  - 'wp_password'
+	 *  - 'wp_page_order'
+	 *  - 'wp_page_parent_id'
+	 *  - 'wp_author_id'
+	 *  - 'mt_allow_comments'
+	 *  - 'mt_allow_pings'
+	 *  - 'dateCreated'
+	 *  - 'date_created_gmt'
+	 *  - 'userid'
+	 *  - 'sticky'
+	 *  - 'custom_fields'
+	 *  - 'terms'
+	 *  - 'link'
+	 *  - 'permaLink'
+	 *  - 'categories'
+	 *  - 'mt_keywords'
+	 *  - 'wp_post_format'
+	 */
 	function wp_getPost( $args ) {
 
 		global $wp_xmlrpc_server;
@@ -1378,6 +1548,17 @@ class wp_xmlrpc_server_ext {
 
 	}
 
+	/**
+	 * Retrieve  posts
+	 *
+	 * @uses wp_get_recent_posts()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - array   $filter optional
+	 * @return array
+	 */
 	function wp_getPosts( $args ) {
 
 		global $wp_xmlrpc_server;
@@ -1538,6 +1719,17 @@ class wp_xmlrpc_server_ext {
 
 	}
 
+	/**
+	 * Retrieve post terms
+	 *
+	 * @uses wp_get_object_terms()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - int     $post_id
+	 * @return array term data
+	 */
 	function wp_getPostTerms( $args ) {
 
 		global $wp_xmlrpc_server;
@@ -1571,6 +1763,18 @@ class wp_xmlrpc_server_ext {
 
 	}
 
+	/**
+	 * Set post terms
+	 *
+	 * @uses wp_set_object_terms()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - int     $post_id
+	 *  - array   $content_struct contains term_ids with taxonomy as keys
+	 * @return boolean true
+	 */
 	function wp_setPostTerms( $args ) {
 
 		global $wp_xmlrpc_server;
@@ -1633,6 +1837,25 @@ class wp_xmlrpc_server_ext {
 
 	}
 
+	/**
+	 * Retrieves a post type
+	 *
+	 * @uses get_post_type_object()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - string  $post_type_name
+	 * @return array contains:
+	 *  - 'labels'
+	 *  - 'description'
+	 *  - 'capability_type'
+	 *  - 'cap'
+	 *  - 'map_meta_cap'
+	 *  - 'hierarchical'
+	 *  - 'menu_position'
+	 *  - 'taxonomies'
+	 */
 	function wp_getPostType( $args ) {
 
 		global $wp_xmlrpc_server;
@@ -1674,6 +1897,16 @@ class wp_xmlrpc_server_ext {
 
 	}
 
+	/**
+	 * Retrieves a post types
+	 *
+	 * @uses get_post_types()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 * @return array
+	 */
 	function wp_getPostTypes( $args ) {
 
 		global $wp_xmlrpc_server;
@@ -1717,6 +1950,24 @@ class wp_xmlrpc_server_ext {
 
 	}
 
+	/**
+	 * Create a new term
+	 *
+	 * @uses wp_insert_term()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - array   $content_struct.
+	 *      The $content_struct must contain:
+	 *      - 'name'
+	 *      - 'taxonomy'
+	 *      Also, it can optionally contain:
+	 *      - 'parent'
+	 *      - 'description'
+	 *      - 'slug'
+	 * @return int term_id
+	 */
 	function wp_newTerm( $args ) {
 
 		global $wp_xmlrpc_server;
@@ -1785,6 +2036,26 @@ class wp_xmlrpc_server_ext {
 
 	}
 
+	/**
+	 * Edit a term
+	 *
+	 * @uses wp_update_term()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - int     $term_id
+	 *  - array   $content_struct.
+	 *      The $content_struct must contain:
+	 *      - 'taxonomy'
+	 *      Also, it can optionally contain:
+	 *      - 'name'
+	 *      - 'parent'
+	 *      - 'description'
+	 *      - 'slug'
+	 *  - boolean $send_mail optional. Defaults to false
+	 * @return int term_id
+	 */
 	function wp_editTerm( $args ) {
 
 		global $wp_xmlrpc_server;
@@ -1865,6 +2136,19 @@ class wp_xmlrpc_server_ext {
 
 	}
 
+	/**
+	 * Delete a  term
+	 *
+	 * @uses wp_delete_term()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - int     $term_id
+	 *  - array   $content_struct contains:
+	 *      - 'taxonomy'
+	 * @return boolean true
+	 */
 	function wp_deleteTerm( $args ) {
 
 		global $wp_xmlrpc_server;
@@ -1909,6 +2193,28 @@ class wp_xmlrpc_server_ext {
 		return $result;
 	}
 
+	/**
+	 * Retrieve a term
+	 *
+	 * @uses get_term()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - int     $term_id
+	 *  - array   $content_struct contains:
+	 *      - 'taxonomy'
+	 * @return array contains:
+	 *  - 'term_id'
+	 *  - 'name'
+	 *  - 'slug'
+	 *  - 'term_group'
+	 *  - 'term_taxonomy_id'
+	 *  - 'taxonomy'
+	 *  - 'description'
+	 *  - 'parent'
+	 *  - 'count'
+	 */
 	function wp_getTerm( $args ) {
 
 		global $wp_xmlrpc_server;
@@ -1943,6 +2249,18 @@ class wp_xmlrpc_server_ext {
 
 	}
 
+	/**
+	 * Retrieve terms
+	 *
+	 * @uses get_terms()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - array   $content_struct contains:
+	 *      - 'taxonomy'
+	 * @return array terms
+	 */
 	function wp_getTerms($args) {
 
 		global $wp_xmlrpc_server;
@@ -1976,6 +2294,21 @@ class wp_xmlrpc_server_ext {
 
 	}
 
+	/**
+	 * Retrieve a taxonomy
+	 *
+	 * @uses get_taxonomy()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - string  $taxonomy_name
+	 * @return array contains:
+	 *  - 'labels'
+	 *  - 'cap'
+	 *  - 'hierarchical'
+	 *  - 'object_type'
+	 */
 	function wp_getTaxonomy( $args ) {
 
 		global $wp_xmlrpc_server;
@@ -2013,6 +2346,16 @@ class wp_xmlrpc_server_ext {
 
 	}
 
+	/**
+	 * Retrieve taxonomies
+	 *
+	 * @uses get_taxonomies()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 * @return array taxonomies
+	 */
 	function wp_getTaxonomies($args) {
 
 		global $wp_xmlrpc_server;
