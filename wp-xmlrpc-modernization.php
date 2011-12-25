@@ -257,6 +257,18 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
+	 * Prepares term data for return in an XML-RPC object
+	 *
+	 * @param array $term The unprepared term data
+	 * @return array The prepared term data
+	 */
+	function prepare_term( $term ) {
+		$_term = (array) $term;
+
+		return apply_filters( 'xmlrpc_prepare_term', $_term, $term );
+	}
+
+	/**
 	 * Create a new user
 	 *
 	 * @uses wp_insert_user()
@@ -2175,9 +2187,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
+	 *  - string  $taxonomy_name
 	 *  - int     $term_id
-	 *  - array   $content_struct contains:
-	 *      - 'taxonomy'
 	 * @return array contains:
 	 *  - 'term_id'
 	 *  - 'name'
@@ -2195,30 +2206,31 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
-		$term_ID            = (int)$args[3];
-		$content_struct     = $args[4];
+		$taxonomy_name      = $args[3];
+		$term_id            = (int)$args[4];
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
-		if ( ! taxonomy_exists( $content_struct['taxonomy'] ) )
-			return new IXR_Error( 403, __( 'Invalid taxonomy' ) );
+		do_action( 'xmlrpc_call', 'wp.getTerm' );
 
-		$taxonomy = get_taxonomy( $content_struct['taxonomy'] );
+		if ( ! taxonomy_exists( $taxonomy_name ) )
+			return new IXR_Error( 403, __( 'Invalid taxonomy name.' ) );
+
+		$taxonomy = get_taxonomy( $taxonomy_name );
 
 		if( ! current_user_can( $taxonomy->cap->assign_terms ) )
-			return new IXR_Error( 401, __( 'You are not allowed to assign terms in this taxonomy' ) );
+			return new IXR_Error( 401, __( 'You are not allowed to assign terms in this taxonomy.' ) );
 
-		$term = get_term( $term_ID , $content_struct['taxonomy'] );
+		$term = get_term( $term_id , $taxonomy_name );
 
 		if ( is_wp_error( $term ) )
-			return new IXR_Error(500, $term->get_error_message());
+			return new IXR_Error( 500, $term->get_error_message() );
 
 		if ( ! $term )
-			return new IXR_Error(500, __('The term ID does not exists'));
+			return new IXR_Error( 404, __( 'Invalid term ID.' ) );
 
-		return $term;
-
+		return $this->prepare_term( $term );
 	}
 
 	/**
@@ -2229,39 +2241,42 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
-	 *  - array   $content_struct contains:
-	 *      - 'taxonomy'
+	 *  - string   $taxonomy_name
 	 * @return array terms
 	 */
-	function wp_getTerms($args) {
+	function wp_getTerms( $args ) {
 		$this->escape( $args );
 
-		$blog_id            = (int) $args[0];
-		$username           = $args[1];
-		$password           = $args[2];
-		$content_struct     = $args[3];
+		$blog_id        = (int) $args[0];
+		$username       = $args[1];
+		$password       = $args[2];
+		$taxonomy_name  = $args[3];
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
-		if ( ! taxonomy_exists( $content_struct['taxonomy'] ) )
-			return new IXR_Error( 403, __( 'Invalid taxonomy' ) );
+		do_action( 'xmlrpc_call', 'wp.getTerms' );
 
-		$taxonomy = get_taxonomy( $content_struct['taxonomy'] );
+		if ( ! taxonomy_exists( $taxonomy_name ) )
+			return new IXR_Error( 403, __( 'Invalid taxonomy name.' ) );
+
+		$taxonomy = get_taxonomy( $taxonomy_name );
 
 		if( ! current_user_can( $taxonomy->cap->assign_terms ) )
-			return new IXR_Error( 401, __( 'You are not allowed to assign terms in this taxonomy' ) );
+			return new IXR_Error( 401, __( 'You are not allowed to assign terms in this taxonomy.' ) );
 
-		$terms = get_terms( $content_struct['taxonomy'] , array('get' => 'all') );
+		$terms = get_terms( $taxonomy_name , array( 'get' => 'all' ) );
 
 		if ( is_wp_error( $terms ) )
-			return new IXR_Error(500, $term->get_error_message());
+			return new IXR_Error( 500, $terms->get_error_message() );
 
-		if ( ! $terms )
-			return new IXR_Error(500, __('The term ID does not exists'));
+		$struct = array();
 
-		return $terms;
+		foreach ( $terms as $term ) {
+			$struct[] = $this->prepare_term( $term );
+		}
 
+		return $struct;
 	}
 
 	/**
