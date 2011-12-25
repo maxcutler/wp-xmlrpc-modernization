@@ -65,6 +65,40 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
+	 * Prepares user data for return in an XML-RPC object
+	 *
+	 * @param obj $user The unprepared WP_User object
+	 * @return array The prepared user data
+	 */
+	function prepare_user( $user ) {
+		$contact_methods = _wp_get_user_contactmethods();
+
+		$user_contacts = array();
+		foreach( $contact_methods as $key => $value ) {
+			$user_contacts[ $key ] = $user->$key;
+		}
+
+		$_user = array(
+			'user_id'           => $user->ID,
+			'username'          => $user->user_login,
+			'first_name'        => $user->user_firstname,
+			'last_name'         => $user->user_lastname,
+			'registered'        => new IXR_Date( mysql2date('Ymd\TH:i:s', $user->user_registered, false) ),
+			'bio'               => $user->user_description,
+			'email'             => $user->user_email,
+			'nickname'          => $user->nickname,
+			'nicename'          => $user->user_nicename,
+			'url'               => $user->user_url,
+			'display_name'      => $user->display_name,
+			'capabilities'      => $user->wp_capabilities,
+			'user_level'        => $user->wp_user_level,
+			'user_contacts'     => $user_contacts
+		);
+
+		return apply_filters( 'xmlrpc_prepare_user', $_user, $user );
+	}
+
+	/**
 	 * Create a new user
 	 *
 	 * @uses wp_insert_user()
@@ -394,34 +428,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if( ! ( $user_id == $user->ID || current_user_can( 'edit_users' ) ))
 			return new IXR_Error( 401, __( 'Sorry, you cannot edit users.' ) );
 
-		// Format registered date
-		$registered_date = mysql2date('Ymd\TH:i:s', $user_data->user_registered, false);
+		$user = $this->prepare_user( $user_data );
 
-		$contact_methods = _wp_get_user_contactmethods();
-
-		$user_contacts = array();
-		foreach( $contact_methods as $key => $value ) {
-			$user_contacts[ $key ] = $user_data->$key;
-		}
-
-		$struct = array(
-			'user_id'           => $user_data->ID,
-			'username'          => $user_data->user_login,
-			'first_name'         => $user_data->user_firstname,
-			'last_name'          => $user_data->user_lastname,
-			'registered'        => new IXR_Date($registered_date),
-			'bio'               => $user_data->user_description,
-			'email'             => $user_data->user_email,
-			'nickname'          => $user_data->nickname,
-			'nicename'          => $user_data->user_nicename,
-			'url'               => $user_data->user_url,
-			'display_name'      => $user_data->display_name,
-			'capabilities'      => $user_data->wp_capabilities,
-			'user_level'        => $user_data->wp_user_level,
-			'user_contacts'     => $user_contacts
-		);
-
-		return $struct;
+		return $user;
 	}
 
 	/**
@@ -442,8 +451,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - 'display_name'
 	 *  - 'user_nicename'
 	 */
-	function wp_getUsers( $args ) { // +
-		$raw_args = $args;
+	function wp_getUsers( $args ) {
 		$this->escape( $args );
 
 		$blog_id    = (int) $args[0];
@@ -479,15 +487,12 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 		$users = get_users( $query );
 
-		if ( ! $users )
-			return array();
+		$_users = array();
+		foreach ( $users as $user_data ) {
+			$_users[] = $this->prepare_user( get_userdata( $user_data->ID ) );
+		}
 
-		$users_struct = array();
-
-		foreach ($users as $user_data)
-			$users_struct[] = $this->wp_getUser( array( $raw_args[0], $raw_args[1], $raw_args[2], $user_data->ID) );
-
-		return $users_struct;
+		return $_users;
 	}
 
 	/**
