@@ -1552,7 +1552,16 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Retrieve  posts
+	 * Retrieve posts.
+	 *
+	 * Besides the common blog_id, username, and password arguments, it takes
+	 * a filter array and a fields array.
+	 *
+	 * Accepted 'filter' keys are 'post_type', 'post_status', 'numberposts', and 'offset'.
+	 *
+	 * The 'fields' array specifies which post fields will be included in the response.
+	 * Values can be either conceptual groups ('post', 'taxonomies', 'custom_fields')
+	 * or specific field names. By default, all fields are returned.
 	 *
 	 * @uses wp_get_recent_posts()
 	 * @param array $args Method parameters. Contains:
@@ -1560,164 +1569,199 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string  $username
 	 *  - string  $password
 	 *  - array   $filter optional
-	 * @return array
+	 *  - array   $fields optional
+	 * @return array. Contains a collection of posts.
 	 */
 	function wp_getPosts( $args ) {
 		$this->escape( $args );
 
-		$blog_id    = (int) $args[0];
+		$blog_ID    = (int) $args[0];
 		$username   = $args[1];
 		$password   = $args[2];
-		$filter     = $args[3];
 
-		if ( ! $user = $this->login( $username, $password ) )
+		if ( isset( $args[3] ) )
+			$filter = $args[3];
+		else
+			$filter = array();
+
+		if ( isset( $args[4] ) )
+			$fields = $args[4];
+		else
+			$fields = array('post', 'taxonomies', 'custom_fields');
+
+		if ( !$user = $this->login( $username, $password ) )
 			return $this->error;
 
 		$query = array();
 
 		if ( isset( $filter['post_type'] ) ) {
-
 			$post_type = get_post_type_object( $filter['post_type'] );
-			if( ! ( (bool)$post_type ) )
+			if( !( (bool)$post_type ) )
 				return new IXR_Error( 403, __( 'The post type specified is not valid' ) );
 
 			if( ! current_user_can( $post_type->cap->edit_posts ) )
 				return new IXR_Error( 401, __( 'Sorry, you are not allowed to edit posts in this post type' ));
-
 			$query['post_type'] = $filter['post_type'];
-
 		}
 
-		$query['numberposts'] = apply_filters( 'xmlrpc_getPosts_maxvalue', 10 );// maximum value
+		if ( isset( $filter['post_status'] ) ) {
+			$query['post_status'] = $filter['post_status'];
+		}
+
 		if ( isset ( $filter['numberposts'] ) ) {
-
-			if( absint( $filter['numberposts'] ) < 10 )
-				$query['number'] = absint( $filter['numberposts'] );
-
+			$query['numberposts'] = absint( $filter['numberposts'] );
 		}
 
-		$posts = wp_get_recent_posts( $query );
+		if ( isset ( $filter['offset'] ) ) {
+			$query['offset'] = absint( $filter['offset'] );
+		}
 
-		if ( ! $posts )
+		do_action('xmlrpc_call', 'wp.getPosts');
+
+		$posts_list = wp_get_recent_posts( $query );
+
+		if ( !$posts_list )
 			return array( );
 
-		// holds all the post data
+		// holds all the posts data
 		$struct = array();
 
-		foreach ( $posts as $post ) {
+		// pre-calculate conceptual group in_array searches
+		$all_post_fields = in_array( 'post', $fields );
+		$all_taxonomy_fields = in_array( 'taxonomies', $fields );
+
+		foreach ( $posts_list as $post ) {
 
 			$post_type = get_post_type_object( $post['post_type'] );
-
-			if( ! current_user_can( $post_type->cap->edit_posts ) )
+			if( !current_user_can( $post_type->cap->edit_posts, $post['ID'] ) )
 				continue;
 
-			$post_date = mysql2date( 'Ymd\TH:i:s', $post['post_date'], false );
-			$post_date_gmt = mysql2date( 'Ymd\TH:i:s', $post['post_date_gmt'], false );
+			// holds the data for this post. built up based on $fields
+			$post_data = array( 'postid' => $post['ID'] );
 
-			// For drafts use the GMT version of the post date
-			if ( $post['post_status'] == 'draft' )
-				$post_date_gmt = get_gmt_from_date( mysql2date( 'Y-m-d H:i:s', $post['post_date'] ), 'Ymd\TH:i:s' );
+			if ( $all_post_fields || in_array( 'title', $fields ) )
+				$post_data['title'] = $post['post_title'];
 
-			$post_content = get_extended( $post['post_content'] );
-			$link = post_permalink( $post['ID'] );
+			if ( $all_post_fields || in_array( 'dateCreated', $fields ) )
+				$post_data['dateCreated'] = new IXR_Date(mysql2date( 'Ymd\TH:i:s', $post['post_date'], false ));
 
-			// Consider future posts as published
-			if ( $post['post_status'] === 'future' )
-				$post['post_status'] = 'publish';
+			if ( $all_post_fields || in_array( 'date_created_gmt', $fields ) )
+				$post_data['date_created_gmt'] = new IXR_Date(mysql2date( 'Ymd\TH:i:s', $post['post_date_gmt'], false ));
 
-			// Get post format
-			$post_format = get_post_format( $post_ID );
-			if ( empty( $post_format ) )
-				$post_format = 'standard';
-
-			$sticky = null;
-			if( $post['post_type'] == 'post' ) {
-
-				$sticky = false;
-				if ( is_sticky( $post_ID ) )
-					$sticky = true;
-
+			if ( $all_post_fields || in_array( 'post_status', $fields ) ) {
+				// Consider future posts as published
+				if ( $post['post_status'] === 'future' )
+					$post_data['post_status'] = 'publish';
+				else
+					$post_data['post_status'] = $post['post_status'];
 			}
 
-			$post_type_taxonomies = get_object_taxonomies( $post['post_type'] , 'names');
-			$terms = wp_get_object_terms( $post_ID, $post_type_taxonomies );
+			if ( $all_post_fields || in_array( 'post_type', $fields ) )
+				$post_data['post_type'] = $post['post_type'];
 
-			$enclosure = array();
-			foreach ( (array) get_post_custom($post_ID) as $key => $val) {
-				if ($key == 'enclosure') {
-					foreach ( (array) $val as $enc ) {
-						$encdata = split("\n", $enc);
-						$enclosure['url'] = trim(htmlspecialchars($encdata[0]));
-						$enclosure['length'] = (int) trim($encdata[1]);
-						$enclosure['type'] = trim($encdata[2]);
-						break 2;
-					}
+			if ( $all_post_fields || in_array( 'post_format', $fields ) ) {
+				$post_format = get_post_format( $post['ID'] );
+				if ( empty( $post_format ) )
+					$post_format = 'standard';
+				$post_data['post_format'] = $post_format;
+			}
+
+			if ( $all_post_fields || in_array( 'wp_slug', $fields ) )
+				$post_data['wp_slug'] = $post['post_name'];
+
+			if ( $all_post_fields || in_array( 'link', $fields ) )
+				$post_data['link'] = post_permalink( $post['ID'] );
+
+			if ( $all_post_fields || in_array( 'permaLink', $fields ) )
+				$post_data['permaLink'] = post_permalink( $post['ID'] );
+
+			if ( $all_post_fields || in_array( 'userid', $fields ) )
+				$post_data['userid'] = $post['post_author'];
+
+			if ( $all_post_fields || in_array( 'wp_author_id', $fields ) )
+				$post_data['wp_author_id'] = $post['post_author'];
+
+			if ( $all_post_fields || in_array( 'mt_allow_comments', $fields ) )
+				$post_data['mt_allow_comments'] = $post['comment_status'];
+
+			if ( $all_post_fields || in_array( 'mt_allow_pings', $fields ) )
+				$post_data['mt_allow_pings'] = $post['ping_status'];
+
+			if ( $all_post_fields || in_array( 'sticky', $fields ) ) {
+				$sticky = null;
+				if( $post['post_type'] == 'post' ) {
+					$sticky = false;
+					if ( is_sticky( $post['ID'] ) )
+						$sticky = true;
 				}
+				$post_data['sticky'] = $sticky;
+			}
+
+			if ( $all_post_fields || in_array( 'wp_password', $fields ) )
+				$post_data['wp_password'] = $post['post_password'];
+
+			if ( $all_post_fields || in_array( 'mt_excerpt', $fields ) )
+				$post_data['mt_excerpt'] = $post['post_excerpt'];
+
+			if ( $all_post_fields || in_array( 'description', $fields ) ) {
+				$post_content = get_extended( $post['post_content'] );
+				$post_data['description'] = $post_content['main'];
+				$post_data['mt_text_more'] = $post_content['extended'];
+			}
+
+			if ( $all_taxonomy_fields || in_array( 'terms', $fields ) ) {
+				$post_type_taxonomies = get_object_taxonomies( $post['post_type'] , 'names');
+				$post_data['terms'] = wp_get_object_terms( $post['ID'], $post_type_taxonomies );;
 			}
 
 			// backward compatiblity
-			$categories = array();
-			$catids = wp_get_post_categories($post_ID);
-			foreach($catids as $catid) {
-				$categories[] = get_cat_name($catid);
+			if ( $all_taxonomy_fields || in_array( 'mt_keywords', $fields ) ) {
+				$tagnames = array();
+				$tags = wp_get_post_tags( $post['ID'] );
+				if ( !empty( $tags ) ) {
+					foreach ( $tags as $tag )
+						$tagnames[] = $tag->name;
+					$tagnames = implode( ', ', $tagnames );
+				} else {
+					$tagnames = '';
+				}
+				$post_data['mt_keywords'] = $tagnames;
 			}
 
-			$tagnames = array();
-			$tags = wp_get_post_tags( $post_ID );
-			if ( !empty( $tags ) ) {
-				foreach ( $tags as $tag )
-					$tagnames[] = $tag->name;
-				$tagnames = implode( ', ', $tagnames );
-			} else {
-				$tagnames = '';
+			// backward compatiblity
+			if ( $all_taxonomy_fields || in_array( 'categories', $fields ) ) {
+				$categories = array();
+				$catids = wp_get_post_categories( $post['ID'] );
+				foreach($catids as $catid) {
+					$categories[] = get_cat_name($catid);
+				}
+				$post_data['categories'] = $categories;
 			}
 
-			$post_data[] = array(
-			'postid'            => $post['ID'],
-			'title'             => $post['post_title'],
-			'description'       => $post_content['main'],
-			'mt_excerpt'        => $post['post_excerpt'],
+			if ( in_array( 'custom_fields', $fields ) )
+				$post_data['custom_fields'] = $this->get_custom_fields( $post['ID'] );
 
-			'post_status'       => $post['post_status'],
-			'post_type'         => $post['post_type'],
-			'wp_slug'           => $post['post_name'],
-			'wp_password'       => $post['post_password'],
+			if ( in_array( 'enclosure', $fields ) ) {
+				$enclosure = array();
+				foreach ( (array) get_post_custom( $post['ID'] ) as $key => $val) {
+					if ($key == 'enclosure') {
+						foreach ( (array) $val as $enc ) {
+							$encdata = split("\n", $enc);
+							$enclosure['url'] = trim(htmlspecialchars($encdata[0]));
+							$enclosure['length'] = (int) trim($encdata[1]);
+							$enclosure['type'] = trim($encdata[2]);
+							break 2;
+						}
+					}
+				}
+				$post_data['enclosure'] = $enclosure;
+			}
 
-			'wp_page_order'     => $post['menu_order'],
-			'wp_page_parent_id' => $post['post_parent'],
-
-			'wp_author_id'      => $post['post_author'],
-
-			'mt_allow_comments' => $post['comment_status'],
-			'mt_allow_pings'    => $post['ping_status'],
-
-			'dateCreated'       => new IXR_Date($post_date),
-			'date_created_gmt'  => new IXR_Date($post_date_gmt),
-
-			'userid'            => $post['post_author'],
-			'sticky'            => $sticky,
-			'custom_fields'     => $this->get_custom_fields($post_ID),
-			'terms'             => $terms,
-
-			'link'              => $link,
-			'permaLink'         => $link,
-
-			// backward compatibility
-			'categories'	=> $categories,
-			'mt_keywords'       => $tagnames,
-			'wp_post_format'    => $post_format,
-
-			);
-
-			if ( ! empty( $enclosure ) )
-			$post_data['enclosure'] = $enclosure;
-
-			$struct[] = $post_date;
+			$struct[] = $post_data;
 
 		}
 
 		return $struct;
-
 	}
 
 	/**
