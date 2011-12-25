@@ -1602,7 +1602,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * Besides the common blog_id, username, and password arguments, it takes
 	 * a filter array and a fields array.
 	 *
-	 * Accepted 'filter' keys are 'post_type', 'post_status', 'numberposts', and 'offset'.
+	 * Accepted 'filter' keys are 'post_type', 'post_status', 'numberposts', 'offset',
+	 * 'orderby', and 'order'.
 	 *
 	 * The 'fields' array specifies which post fields will be included in the response.
 	 * Values can be either conceptual groups ('post', 'taxonomies', 'custom_fields')
@@ -1659,6 +1660,14 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 		if ( isset ( $filter['offset'] ) ) {
 			$query['offset'] = absint( $filter['offset'] );
+		}
+
+		if ( isset ( $filter['orderby'] ) ) {
+			$query['orderby'] = $filter['orderby'];
+
+			if ( isset ( $filter['order'] ) ) {
+				$query['order'] = $filter['order'];
+			}
 		}
 
 		do_action('xmlrpc_call', 'wp.getPosts');
