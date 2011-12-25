@@ -102,7 +102,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * Prepares post data for return in an XML-RPC object
 	 *
 	 * @param array $post The unprepared post data
-	 * @param array $field The subset of post fields to return
+	 * @param array $fields The subset of post fields to return
 	 * @return array The prepared post data
 	 */
 	function prepare_post( $post, $fields ) {
@@ -238,6 +238,22 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		}
 
 		return apply_filters( 'xmlrpc_prepare_post', $_post, $post, $fields );
+	}
+
+	/**
+	 * Prepares taxonomy data for return in an XML-RPC object
+	 *
+	 * @param array|object $taxonomy The unprepared taxonomy data
+	 * @return array The prepared taxonomy data
+	 */
+	function prepare_taxonomy( $taxonomy ) {
+		$_taxonomy = (array) $taxonomy;
+
+		unset(
+			$_taxonomy['update_count_callback']
+		);
+
+		return apply_filters( 'xmlrpc_prepare_taxonomy', $_taxonomy, $taxonomy );
 	}
 
 	/**
@@ -2274,28 +2290,17 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
-		$taxonomy_names = get_taxonomies('','names');
+		do_action( 'xmlrpc_call', 'wp.getTaxonomy' );
 
-		if( ! in_array( $taxonomy_name, $taxonomy_names ) )
+		if( ! taxonomy_exists( $taxonomy_name ) )
 			return new IXR_Error( 403, __( 'The taxonomy type specified is not valid' ) );
 
 		$taxonomy = get_taxonomy( $taxonomy_name );
 
-		//capability check
 		if( ! current_user_can( $taxonomy->cap->edit_terms ) )
 			return new IXR_Error( 401, __( 'Sorry, You are not allowed to edit this post type' ) );
 
-		$taxonomy = (array)$taxonomy;
-
-		$taxonomy_type_data = array(
-			'labels'            => $taxonomy['labels'],
-			'cap'               => $taxonomy['cap'],
-			'hierarchical'      => $taxonomy['hierarchical'],
-			'object_type'       => $taxonomy['object_type'],
-		);
-
-		return $taxonomy_type_data;
-
+		return $this->prepare_taxonomy( $taxonomy );
 	}
 
 	/**
@@ -2318,32 +2323,22 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
-		$taxonomies = get_taxonomies('','objects');
+		do_action( 'xmlrpc_call', 'wp.getTaxonomies' );
+
+		$taxonomies = get_taxonomies( '', 'objects' );
 
 		// holds all the taxonomy data
 		$struct = array();
 
 		foreach( $taxonomies as $taxonomy ) {
-
 			// capability check for post_types
 			if( ! current_user_can( $taxonomy->cap->edit_terms ) )
 				continue;
 
-			$taxonomy = (array)$taxonomy;
-
-			$taxonomy_data = array(
-				'labels'            => $taxonomy['labels'],
-				'cap'               => $taxonomy['cap'],
-				'hierarchical'      => $taxonomy['hierarchical'],
-				'object_type'       => $taxonomy['object_type'],
-			);
-
-			$struct[ $taxonomy['name'] ] = $taxonomy_data;
-
+			$struct[ $taxonomy->name ] = $this->prepare_taxonomy( $taxonomy );
 		}
 
 		return $struct;
-
 	}
 }
 
