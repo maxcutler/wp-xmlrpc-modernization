@@ -116,11 +116,17 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( $all_post_fields || in_array( 'title', $fields ) )
 			$_post['title'] = $post['post_title'];
 
-		if ( $all_post_fields || in_array( 'dateCreated', $fields ) )
-			$_post['dateCreated'] = new IXR_Date(mysql2date( 'Ymd\TH:i:s', $post['post_date'], false ));
+		if ( $all_post_fields || in_array( 'date_created', $fields ) )
+			$_post['date_created'] = new IXR_Date(mysql2date( 'Ymd\TH:i:s', $post['post_date'], false ));
 
 		if ( $all_post_fields || in_array( 'date_created_gmt', $fields ) )
 			$_post['date_created_gmt'] = new IXR_Date(mysql2date( 'Ymd\TH:i:s', $post['post_date_gmt'], false ));
+
+		if ( $all_post_fields || in_array( 'date_modified', $fields ) )
+			$_post['date_modified'] = new IXR_Date(mysql2date( 'Ymd\TH:i:s', $post['post_modified'], false ));
+
+		if ( $all_post_fields || in_array( 'date_modified_gmt', $fields ) )
+			$_post['date_modified_gmt'] = new IXR_Date(mysql2date( 'Ymd\TH:i:s', $post['post_modified_gmt'], false ));
 
 		if ( $all_post_fields || in_array( 'post_status', $fields ) ) {
 			// Consider future posts as published
