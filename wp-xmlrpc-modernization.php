@@ -1565,126 +1565,29 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	function wp_getPost( $args ) {
 		$this->escape( $args );
 
-		$post_ID            = (int) $args[0];
+		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
+		$post_id            = (int) $args[3];
+
+		if ( isset( $args[4] ) )
+			$fields = $args[4];
+		else
+			$fields = array( 'post', 'taxonomies', 'custom_fields' );
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
-		$post = wp_get_single_post( $post_ID, ARRAY_A );
-			if ( empty( $post["ID"] ) )
-				return new IXR_Error( 404, __( 'Invalid post ID.' ) );
+		$post = wp_get_single_post( $post_id, ARRAY_A );
+
+		if ( empty( $post["ID"] ) )
+			return new IXR_Error( 404, __( 'Invalid post ID.' ) );
 
 		$post_type = get_post_type_object( $post['post_type'] );
-		if( ! current_user_can( $post_type->cap->edit_posts, $post_ID ) )
-			return new IXR_Error( 401, __( 'Sorry, you are not allowed to edit posts in this post type' ));
+		if( ! current_user_can( $post_type->cap->edit_posts, $post_id ) )
+			return new IXR_Error( 401, __( 'Sorry, you cannot edit this post.' ));
 
-		//return $post;
-
-		$post_date = mysql2date( 'Ymd\TH:i:s', $post['post_date'], false );
-		$post_date_gmt = mysql2date( 'Ymd\TH:i:s', $post['post_date_gmt'], false );
-
-		// For drafts use the GMT version of the post date
-		if ( $post['post_status'] == 'draft' )
-			$post_date_gmt = get_gmt_from_date( mysql2date( 'Y-m-d H:i:s', $post['post_date'] ), 'Ymd\TH:i:s' );
-
-		$post_content = get_extended( $post['post_content'] );
-		$link = post_permalink( $post['ID'] );
-
-		// Consider future posts as published
-		if ( $post['post_status'] === 'future' )
-			$post['post_status'] = 'publish';
-
-		// Get post format
-		$post_format = get_post_format( $post_ID );
-		if ( empty( $post_format ) )
-			$post_format = 'standard';
-
-		$sticky = null;
-		if( $post['post_type'] == 'post' ) {
-
-			$sticky = false;
-			if ( is_sticky( $post_ID ) )
-				$sticky = true;
-
-		}
-
-		$post_type_taxonomies = get_object_taxonomies( $post['post_type'] , 'names');
-		$terms = wp_get_object_terms( $post_ID, $post_type_taxonomies );
-
-		$enclosure = array();
-		foreach ( (array) get_post_custom($post_ID) as $key => $val) {
-			if ($key == 'enclosure') {
-				foreach ( (array) $val as $enc ) {
-					$encdata = split("\n", $enc);
-					$enclosure['url'] = trim(htmlspecialchars($encdata[0]));
-					$enclosure['length'] = (int) trim($encdata[1]);
-					$enclosure['type'] = trim($encdata[2]);
-					break 2;
-				}
-			}
-		}
-
-		// backward compatiblity
-		$categories = array();
-		$catids = wp_get_post_categories($post_ID);
-		foreach($catids as $catid) {
-			$categories[] = get_cat_name($catid);
-		}
-
-		$tagnames = array();
-		$tags = wp_get_post_tags( $post_ID );
-		if ( !empty( $tags ) ) {
-			foreach ( $tags as $tag )
-				$tagnames[] = $tag->name;
-			$tagnames = implode( ', ', $tagnames );
-		} else {
-			$tagnames = '';
-		}
-
-		$struct = array(
-			'postid'            => $post['ID'],
-			'title'             => $post['post_title'],
-			'description'       => $post_content['main'],
-			'mt_excerpt'        => $post['post_excerpt'],
-
-			'post_status'       => $post['post_status'],
-			'post_type'         => $post['post_type'],
-			'wp_slug'           => $post['post_name'],
-			'wp_password'       => $post['post_password'],
-
-			'wp_page_order'     => $post['menu_order'],
-			'wp_page_parent_id' => $post['post_parent'],
-
-			'wp_author_id'      => $post['post_author'],
-
-			'mt_allow_comments' => $post['comment_status'],
-			'mt_allow_pings'    => $post['ping_status'],
-
-			'dateCreated'       => new IXR_Date($post_date),
-			'date_created_gmt'  => new IXR_Date($post_date_gmt),
-
-			'userid'            => $post['post_author'],
-			'sticky'            => $sticky,
-			'custom_fields'     => $this->get_custom_fields( $post_ID ),
-			'terms'             => $terms,
-
-			'link'              => $link,
-			'permaLink'         => $link,
-
-			// backward compatibility
-			'categories'	=> $categories,
-			'mt_keywords'       => $tagnames,
-			'wp_post_format'    => $post_format,
-
-		);
-
-		if ( ! empty( $enclosure ) )
-			$resp['enclosure'] = $enclosure;
-
-		return $struct;
-
+		return $this->prepare_post( $post, $fields );
 	}
 
 	/**
@@ -1723,7 +1626,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( isset( $args[4] ) )
 			$fields = $args[4];
 		else
-			$fields = array('post', 'taxonomies', 'custom_fields');
+			$fields = array( 'post', 'taxonomies', 'custom_fields' );
 
 		if ( !$user = $this->login( $username, $password ) )
 			return $this->error;
