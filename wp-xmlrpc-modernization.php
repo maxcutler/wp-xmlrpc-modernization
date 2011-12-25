@@ -9,14 +9,26 @@
  *
 */
 
-class wp_xmlrpc_server_ext {
+include_once(ABSPATH . WPINC . '/class-IXR.php');
+include_once(ABSPATH . WPINC . '/class-wp-xmlrpc-server.php');
 
-	function wp_xmlrpc_server_ext() {
-		$this->__construct();
-	}
+add_filter( 'wp_xmlrpc_server_class', 'replace_xmlrpc_server_class' );
+
+function replace_xmlrpc_server_class( $class_name ) {
+	// only replace the default XML-RPC class if another plug-in hasn't already changed it
+	if ( $class_name === 'wp_xmlrpc_server' )
+		return 'wp_xmlrpc_server_ext';
+	else
+		return $class_name;
+}
+
+class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 	function __construct() {
+		// hook filter to add the new methods after the existing ones are added in the parent constructor
 		add_filter( 'xmlrpc_methods' , array( &$this, 'xmlrpc_methods' ) );
+
+		parent::__construct();
 	}
 
 	function xmlrpc_methods ( $methods ) {
@@ -75,16 +87,16 @@ class wp_xmlrpc_server_ext {
 	 */
 	function wp_newUser( $args ) {
 
-		global $wp_xmlrpc_server, $wp_roles;
-		$wp_xmlrpc_server->escape($args);
+		global $wp_roles;
+		$this->escape($args);
 
 		$blog_id        = (int) $args[0];
 		$username       = $args[1];
 		$password       = $args[2];
 		$content_struct = $args[3];
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		if ( ! current_user_can( 'create_users' ) )
 			return new IXR_Error( 401, __( 'You are not allowed to create users.' ) );
@@ -186,8 +198,8 @@ class wp_xmlrpc_server_ext {
 	 */
 	function wp_editUser( $args ) {
 
-		global $wp_xmlrpc_server, $wp_roles;
-		$wp_xmlrpc_server->escape( $args );
+		global $wp_roles;
+		$this->escape( $args );
 
 		$blog_id        = (int) $args[0];
 		$username       = $args[1];
@@ -195,8 +207,8 @@ class wp_xmlrpc_server_ext {
 		$user_ID        = (int) $args[3];
 		$content_struct = $args[4];
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		$user_info = get_userdata( $user_ID );
 
@@ -298,17 +310,15 @@ class wp_xmlrpc_server_ext {
 	 * @return array user_ids
 	 */
 	function wp_deleteUser( $args ) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+		$this->escape( $args );
 
 		$blog_id    = (int) $args[0];
 		$username   = $args[1];
 		$password   = $args[2];
 		$user_IDs   = $args[3]; // can be an array of user ID's
 
-		if( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		if( ! current_user_can( 'delete_users' ) )
 			return new IXR_Error( 401, __( 'You are not allowed to delete users.' ) );
@@ -365,18 +375,16 @@ class wp_xmlrpc_server_ext {
 	 *  - 'display_name'
 	 *  - 'usercontacts'
 	 */
-	function wp_getUser( $args ) { // +
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+	function wp_getUser( $args ) {
+		$this->escape( $args );
 
 		$blog_id    = (int) $args[0];
 		$username   = $args[1];
 		$password   = $args[2];
 		$user_id    = (int) $args[3];
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		$user_data = get_userdata( $user_id );
 
@@ -436,17 +444,15 @@ class wp_xmlrpc_server_ext {
 	 */
 	function wp_getUsers( $args ) { // +
 		$raw_args = $args;
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+		$this->escape( $args );
 
 		$blog_id    = (int) $args[0];
 		$username   = $args[1];
 		$password   = $args[2];
 		$filter     = isset( $args[3] ) ? $args[3] : array();
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		if( ! current_user_can( 'edit_users' ))
 			return new IXR_Error( 401, __( 'Sorry, you cannot edit users.' ) );
@@ -522,9 +528,7 @@ class wp_xmlrpc_server_ext {
 	 * @return string post_id
 	 */
 	function wp_newPost( $args ) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape($args);
+		$this->escape($args);
 
 		$blog_id        = (int) $args[0]; // for future use
 		$username       = $args[1];
@@ -532,8 +536,8 @@ class wp_xmlrpc_server_ext {
 		$content_struct = $args[3];
 		$publish        = isset( $args[4] ) ? $args[4] : false;
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		$post_type = get_post_type_object( $content_struct['post_type'] );
 		if( ! ( (bool)$post_type ) )
@@ -843,7 +847,7 @@ class wp_xmlrpc_server_ext {
 			if( ! post_type_supports( $content_struct['post_type'], 'custom-fields' ) )
 				return new IXR_Error( 401, __( 'This post type does not support custom fields.' ) );
 
-			$wp_xmlrpc_server->set_custom_fields( $post_ID, $content_struct['custom_fields'] );
+			$this->set_custom_fields( $post_ID, $content_struct['custom_fields'] );
 
 		}
 
@@ -929,8 +933,8 @@ class wp_xmlrpc_server_ext {
 
 		// Handle enclosures
 		$thisEnclosure = isset($content_struct['enclosure']) ? $content_struct['enclosure'] : null;
-		$wp_xmlrpc_server->add_enclosure_if_new($post_ID, $thisEnclosure);
-		$wp_xmlrpc_server->attach_uploads( $post_ID, $post_data['post_content'] );
+		$this->add_enclosure_if_new($post_ID, $thisEnclosure);
+		$this->attach_uploads( $post_ID, $post_data['post_content'] );
 
 		return strval( $post_ID );
 
@@ -949,9 +953,7 @@ class wp_xmlrpc_server_ext {
 	 * @return string post_id
 	 */
 	function wp_editPost($args) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape($args);
+		$this->escape($args);
 
 		$post_ID        = (int) $args[0];
 		$username       = $args[1];
@@ -959,8 +961,8 @@ class wp_xmlrpc_server_ext {
 		$content_struct = $args[3];
 		$publish        = isset( $args[4] ) ? $args[4] : false;
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		$post = wp_get_single_post( $post_ID, ARRAY_A );
 		if ( empty( $post['ID'] ) )
@@ -1241,7 +1243,7 @@ class wp_xmlrpc_server_ext {
 			if( ! post_type_supports( $content_struct['post_type'], 'custom-fields' ) )
 				return new IXR_Error(401, __('This post type does not support custom fields'));
 
-			$wp_xmlrpc_server->set_custom_fields( $post_ID, $content_struct['custom_fields'] );
+			$this->set_custom_fields( $post_ID, $content_struct['custom_fields'] );
 
 		}
 
@@ -1326,8 +1328,8 @@ class wp_xmlrpc_server_ext {
 
 		// Handle enclosures
 		$thisEnclosure = isset($content_struct['enclosure']) ? $content_struct['enclosure'] : null;
-		$wp_xmlrpc_server->add_enclosure_if_new($post_ID, $thisEnclosure);
-		$wp_xmlrpc_server->attach_uploads( $post_ID, $post_data['post_content'] );
+		$this->add_enclosure_if_new($post_ID, $thisEnclosure);
+		$this->attach_uploads( $post_ID, $post_data['post_content'] );
 
 		return strval( $post_ID );
 
@@ -1344,16 +1346,14 @@ class wp_xmlrpc_server_ext {
 	 * @return array post_ids
 	 */
 	function wp_deletePost( $args ) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+		$this->escape( $args );
 
 		$post_IDs = $args[0]; // this could be an array
 		$username = $args[1];
 		$password = $args[2];
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		if( ! is_array( $post_IDs ) )
 			$post_IDs = array( (int)$post_IDs );
@@ -1422,16 +1422,14 @@ class wp_xmlrpc_server_ext {
 	 *  - 'wp_post_format'
 	 */
 	function wp_getPost( $args ) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+		$this->escape( $args );
 
 		$post_ID            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		$post = wp_get_single_post( $post_ID, ARRAY_A );
 			if ( empty( $post["ID"] ) )
@@ -1528,7 +1526,7 @@ class wp_xmlrpc_server_ext {
 
 			'userid'            => $post['post_author'],
 			'sticky'            => $sticky,
-			'custom_fields'     => $wp_xmlrpc_server->get_custom_fields( $post_ID ),
+			'custom_fields'     => $this->get_custom_fields( $post_ID ),
 			'terms'             => $terms,
 
 			'link'              => $link,
@@ -1560,17 +1558,15 @@ class wp_xmlrpc_server_ext {
 	 * @return array
 	 */
 	function wp_getPosts( $args ) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+		$this->escape( $args );
 
 		$blog_id    = (int) $args[0];
 		$username   = $args[1];
 		$password   = $args[2];
 		$filter     = $args[3];
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		$query = array();
 
@@ -1695,7 +1691,7 @@ class wp_xmlrpc_server_ext {
 
 			'userid'            => $post['post_author'],
 			'sticky'            => $sticky,
-			'custom_fields'     => $wp_xmlrpc_server->get_custom_fields($post_ID),
+			'custom_fields'     => $this->get_custom_fields($post_ID),
 			'terms'             => $terms,
 
 			'link'              => $link,
@@ -1731,17 +1727,15 @@ class wp_xmlrpc_server_ext {
 	 * @return array term data
 	 */
 	function wp_getPostTerms( $args ) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+		$this->escape( $args );
 
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
 		$post_ID            = (int) $args[3];
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		$post = wp_get_single_post( $post_ID, ARRAY_A );
 		if ( empty( $post['ID'] ) )
@@ -1776,9 +1770,7 @@ class wp_xmlrpc_server_ext {
 	 * @return boolean true
 	 */
 	function wp_setPostTerms( $args ) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape($args);
+		$this->escape($args);
 
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
@@ -1787,8 +1779,8 @@ class wp_xmlrpc_server_ext {
 		$content_struct     = $args[4];
 		$append             = $args[5] ? true : false;
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		$post = wp_get_single_post( $post_ID, ARRAY_A );
 		if ( empty( $post['ID'] ) )
@@ -1857,17 +1849,15 @@ class wp_xmlrpc_server_ext {
 	 *  - 'taxonomies'
 	 */
 	function wp_getPostType( $args ) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+		$this->escape( $args );
 
 		$blog_id        = (int) $args[0];
 		$username       = $args[1];
 		$password       = $args[2];
 		$post_type_name = $args[3];
 
-		if ( !$user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( !$user = $this->login( $username, $password ) )
+			return $this->error;
 
 		$post_type_names = get_post_types('', 'names');
 
@@ -1908,16 +1898,14 @@ class wp_xmlrpc_server_ext {
 	 * @return array
 	 */
 	function wp_getPostTypes( $args ) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+		$this->escape( $args );
 
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		$post_types = get_post_types( '','objects' );
 
@@ -1969,17 +1957,15 @@ class wp_xmlrpc_server_ext {
 	 * @return int term_id
 	 */
 	function wp_newTerm( $args ) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+		$this->escape( $args );
 
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
 		$content_struct     = $args[3];
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		if ( ! taxonomy_exists( $content_struct['taxonomy'] ) )
 			return new IXR_Error( 403, __( 'Invalid taxonomy' ) );
@@ -2057,9 +2043,7 @@ class wp_xmlrpc_server_ext {
 	 * @return int term_id
 	 */
 	function wp_editTerm( $args ) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+		$this->escape( $args );
 
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
@@ -2067,8 +2051,8 @@ class wp_xmlrpc_server_ext {
 		$term_ID            = (int)$args[3];
 		$content_struct     = $args[4];
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		if ( ! taxonomy_exists( $content_struct['taxonomy'] ) )
 			return new IXR_Error( 403, __( 'Invalid taxonomy' ) );
@@ -2150,9 +2134,7 @@ class wp_xmlrpc_server_ext {
 	 * @return boolean true
 	 */
 	function wp_deleteTerm( $args ) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+		$this->escape( $args );
 
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
@@ -2160,8 +2142,8 @@ class wp_xmlrpc_server_ext {
 		$term_ID            = (int)$args[3];
 		$content_struct     = $args[4];
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		if ( ! taxonomy_exists( $content_struct['taxonomy'] ) )
 			return new IXR_Error( 403, __( 'Invalid taxonomy' ) );
@@ -2216,9 +2198,7 @@ class wp_xmlrpc_server_ext {
 	 *  - 'count'
 	 */
 	function wp_getTerm( $args ) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+		$this->escape( $args );
 
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
@@ -2226,8 +2206,8 @@ class wp_xmlrpc_server_ext {
 		$term_ID            = (int)$args[3];
 		$content_struct     = $args[4];
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		if ( ! taxonomy_exists( $content_struct['taxonomy'] ) )
 			return new IXR_Error( 403, __( 'Invalid taxonomy' ) );
@@ -2262,17 +2242,15 @@ class wp_xmlrpc_server_ext {
 	 * @return array terms
 	 */
 	function wp_getTerms($args) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+		$this->escape( $args );
 
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
 		$content_struct     = $args[3];
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		if ( ! taxonomy_exists( $content_struct['taxonomy'] ) )
 			return new IXR_Error( 403, __( 'Invalid taxonomy' ) );
@@ -2310,17 +2288,15 @@ class wp_xmlrpc_server_ext {
 	 *  - 'object_type'
 	 */
 	function wp_getTaxonomy( $args ) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+		$this->escape( $args );
 
 		$blog_id        = (int) $args[0];
 		$username       = $args[1];
 		$password       = $args[2];
 		$taxonomy_name  = $args[3];
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		$taxonomy_names = get_taxonomies('','names');
 
@@ -2357,16 +2333,14 @@ class wp_xmlrpc_server_ext {
 	 * @return array taxonomies
 	 */
 	function wp_getTaxonomies($args) {
-
-		global $wp_xmlrpc_server;
-		$wp_xmlrpc_server->escape( $args );
+		$this->escape( $args );
 
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
 
-		if ( ! $user = $wp_xmlrpc_server->login( $username, $password ) )
-			return $wp_xmlrpc_server->error;
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
 
 		$taxonomies = get_taxonomies('','objects');
 
@@ -2397,5 +2371,4 @@ class wp_xmlrpc_server_ext {
 	}
 }
 
-$wp_xmlrpc_server_exts = new wp_xmlrpc_server_ext();
 ?>
