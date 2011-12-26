@@ -2050,7 +2050,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
-		$term_id            = (int)$args[3];
+		$term_id            = (int) $args[3];
 		$content_struct     = $args[4];
 
 		if ( ! $user = $this->login( $username, $password ) )
@@ -2059,14 +2059,14 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		do_action( 'xmlrpc_call', 'wp.editTerm' );
 
 		if ( ! taxonomy_exists( $content_struct['taxonomy'] ) )
-			return new IXR_Error( 403, __( 'Invalid taxonomy' ) );
+			return new IXR_Error( 403, __( 'Invalid taxonomy.' ) );
 
 		$taxonomy = get_taxonomy( $content_struct['taxonomy'] );
 
 		if( ! current_user_can( $taxonomy->cap->edit_terms ) )
-			return new IXR_Error( 401, __( 'You are not allowed to edit terms in this taxonomy' ) );
+			return new IXR_Error( 401, __( 'You are not allowed to edit terms in this taxonomy.' ) );
 
-		$taxonomy = (array)$taxonomy;
+		$taxonomy = (array) $taxonomy;
 
 		// hold the data of the term
 		$term_data = array();
@@ -2074,36 +2074,32 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$term = get_term( $term_id , $content_struct['taxonomy'] );
 
 		if ( is_wp_error( $term ) )
-			return new IXR_Error(500, $term->get_error_message());
+			return new IXR_Error( 500, $term->get_error_message() );
 
 		if ( ! $term )
-			return new IXR_Error(500, __('The term ID does not exists'));
+			return new IXR_Error( 404, __('Invalid term ID.') );
 
 		if( isset ( $content_struct['name'] ) ) {
-
 			$term_data['name'] = trim( $content_struct['name'] );
 
 			if( empty ( $term_data['name'] ) )
-				return new IXR_Error( 403, __( 'The term name cannot be empty' ) );
-
+				return new IXR_Error( 403, __( 'The term name cannot be empty.' ) );
 		}
 
 		if( isset ( $content_struct['parent'] ) ) {
-
 			if( ! $taxonomy['hierarchical'] )
-				return new IXR_Error( 403, __( 'This taxonomy is not hieararchical' ) );
+				return new IXR_Error( 403, __( 'This taxonomy is not hierarchical.' ) );
 
-			$parent_term_id = (int)$content_struct['parent'];
+			$parent_term_id = (int) $content_struct['parent'];
 			$parent_term = get_term( $parent_term_id , $taxonomy['name'] );
 
 			if ( is_wp_error( $parent_term) )
-				return new IXR_Error(500, $term->get_error_message());
+				return new IXR_Error( 500, $term->get_error_message() );
 
 			if ( ! $parent_term )
-				return new IXR_Error(500, __('Parent term does not exists'));
+				return new IXR_Error( 403, __('Invalid parent term ID.') );
 
 			$term_data['parent'] = $content_struct['parent'];
-
 		}
 
 		if( isset ( $content_struct['description'] ) )
@@ -2112,16 +2108,15 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if( isset ( $content_struct['slug'] ) )
 			$term_data['slug'] = $content_struct['slug'];
 
-		$term_ID = wp_update_term( $term_id , $taxonomy['name'] , $term_data );
+		$term = wp_update_term( $term_id , $taxonomy['name'] , $term_data );
 
-		if ( is_wp_error( $term_ID ) )
-			return new IXR_Error(500, $term_ID->get_error_message());
+		if ( is_wp_error( $term ) )
+			return new IXR_Error( 500, $term->get_error_message() );
 
-		if ( ! $term_ID )
-			return new IXR_Error(500, __('Sorry, your entry could not be posted. Something wrong happened.'));
+		if ( ! $term )
+			return new IXR_Error( 500, __('Sorry, editing the term failed.') );
 
-		return $term_ID;
-
+		return $term['term_id'];
 	}
 
 	/**
