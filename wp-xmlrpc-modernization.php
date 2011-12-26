@@ -269,6 +269,20 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
+	 * Prepares post type data for return in an XML-RPC object
+	 *
+	 * @param array|object $post_type The unprepared post type data
+	 * @return array The prepared post type data
+	 */
+	function prepare_post_type( $post_type ) {
+		$_post_type = (array) $post_type;
+
+		$_post_type['taxonomies'] = get_object_taxonomies( $_post_type['name'] );
+
+		return apply_filters( 'xmlrpc_prepare_post_type', $_post_type, $post_type );
+	}
+
+	/**
 	 * Create a new user
 	 *
 	 * @uses wp_insert_user()
@@ -1910,35 +1924,20 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
-		$post_types = get_post_types( '','objects' );
+		do_action( 'xmlrpc_call', 'wp.getPostTypes' );
+
+		$post_types = get_post_types( '', 'objects' );
 
 		$struct = array();
 
 		foreach( $post_types as $post_type ) {
-
-			// capability check for post_types
 			if( ! current_user_can( $post_type->cap->edit_posts ) )
 				continue;
 
-			$post_type = (array)$post_type;
-
-			$post_type_data = array(
-				'labels'            => $post_type['labels'],
-				'description'       => $post_type['description'],
-				'capability_type'   => $post_type['capability_type'],
-				'cap'               => $post_type['cap'],
-				'map_meta_cap'      => $post_type['map_meta_cap'],
-				'hierarchical'      => $post_type['hierarchical'],
-				'menu_position'     => $post_type['menu_position'],
-				'taxonomies'        => get_object_taxonomies( $post_type['name'] ),
-			);
-
-			$struct[ $post_type['name'] ] = $post_type_data;
-
+			$struct[$post_type->name] = $this->prepare_post_type( $post_type );
 		}
 
 		return $struct;
-
 	}
 
 	/**
