@@ -2013,15 +2013,15 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if( isset ( $content_struct['slug'] ) )
 			$term_data['slug'] = $content_struct['slug'];
 
-		$term_ID = wp_insert_term( $term_data['name'] , $taxonomy['name'] , $term_data );
+		$term = wp_insert_term( $term_data['name'] , $taxonomy['name'] , $term_data );
 
-		if ( is_wp_error( $term_ID ) )
-			return new IXR_Error( 500, $term_ID->get_error_message() );
+		if ( is_wp_error( $term ) )
+			return new IXR_Error( 500, $term->get_error_message() );
 
-		if ( ! $term_ID )
+		if ( ! $term )
 			return new IXR_Error( 500, __('Sorry, your term could not be created. Something wrong happened.') );
 
-		return $term_ID;
+		return $term['term_id'];
 	}
 
 	/**
@@ -2050,11 +2050,13 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
-		$term_ID            = (int)$args[3];
+		$term_id            = (int)$args[3];
 		$content_struct     = $args[4];
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
+
+		do_action( 'xmlrpc_call', 'wp.editTerm' );
 
 		if ( ! taxonomy_exists( $content_struct['taxonomy'] ) )
 			return new IXR_Error( 403, __( 'Invalid taxonomy' ) );
@@ -2069,7 +2071,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		// hold the data of the term
 		$term_data = array();
 
-		$term = get_term( $term_ID , $content_struct['taxonomy'] );
+		$term = get_term( $term_id , $content_struct['taxonomy'] );
 
 		if ( is_wp_error( $term ) )
 			return new IXR_Error(500, $term->get_error_message());
@@ -2110,7 +2112,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if( isset ( $content_struct['slug'] ) )
 			$term_data['slug'] = $content_struct['slug'];
 
-		$term_ID = wp_update_term( $term_ID , $taxonomy['name'] , $term_data );
+		$term_ID = wp_update_term( $term_id , $taxonomy['name'] , $term_data );
 
 		if ( is_wp_error( $term_ID ) )
 			return new IXR_Error(500, $term_ID->get_error_message());
