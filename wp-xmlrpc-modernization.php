@@ -301,7 +301,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *      - 'last_name'
 	 *      - 'website'
 	 *  - boolean $send_mail optional. Defaults to false
-	 * @return string user_id
+	 * @return int user_id
 	 */
 	function wp_newUser( $args ) {
 		$this->escape($args);
@@ -379,10 +379,10 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @uses wp_update_user()
 	 * @param array $args Method parameters. Contains:
 	 *  - int     $blog_id
-	 *  - int     $user_id
 	 *  - string  $username
 	 *  - string  $password
-	 *  - array     $content_struct.
+	 *  - int     $user_id
+	 *  - array   $content_struct.
 	 *      It can optionally contain:
 	 *      - 'email'
 	 *      - 'first_name'
@@ -395,39 +395,38 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *      - 'usercontacts'
 	 *      - 'password'
 	 *  - boolean $send_mail optional. Defaults to false
-	 * @return string user_id
+	 * @return int user_id
 	 */
 	function wp_editUser( $args ) {
-
-		global $wp_roles;
 		$this->escape( $args );
 
 		$blog_id        = (int) $args[0];
 		$username       = $args[1];
 		$password       = $args[2];
-		$user_ID        = (int) $args[3];
+		$user_id        = (int) $args[3];
 		$content_struct = $args[4];
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
-		$user_info = get_userdata( $user_ID );
+		do_action( 'xmlrpc_call', 'wp.editUser' );
+
+		$user_info = get_userdata( $user_id );
 
 		if( ! $user_info )
-			return new IXR_Error(404, __('Invalid user ID.'));
+			return new IXR_Error( 404, __( 'Invalid user ID.' ) );
 
-		if( ! ( $user_ID == $user->ID || current_user_can( 'edit_users' ) ) )
-			return new IXR_Error(401, __('Sorry, you cannot edit this user.'));
+		if( ! ( $user_id == $user->ID || current_user_can( 'edit_users' ) ) )
+			return new IXR_Error(401, __( 'Sorry, you cannot edit this user.' ) );
 
 		// holds data of the user
 		$user_data = array();
-		$user_data['ID'] = $user_ID;
+		$user_data['ID'] = $user_id;
 
 		if ( isset( $content_struct['username'] ) && $content_struct['username'] !== $user_info->user_login )
-			return new IXR_Error(401, __('Username cannot be changed.'));
+			return new IXR_Error( 401, __( 'Username cannot be changed.' ) );
 
 		if ( isset( $content_struct['email'] ) ) {
-
 			if( ! is_email( $content_struct['email'] ) )
 				return new IXR_Error( 403, __( 'This email address is not valid.' ) );
 
@@ -436,22 +435,16 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 				return new IXR_Error( 403, __( 'This email address is already registered.' ) );
 
 			$user_data['user_email'] = $content_struct['email'];
-
 		}
 
 		if( isset ( $content_struct['role'] ) ) {
-
 			if ( ! current_user_can( 'edit_users' ) )
-				return new IXR_Error( 401, __( 'You are not allowed to change roles for this user' ) );
+				return new IXR_Error( 401, __( 'You are not allowed to change roles for this user.' ) );
 
-			if( ! isset ( $wp_roles ) )
-				$wp_roles = new WP_Roles ();
-
-			if( !array_key_exists( $content_struct['role'], $wp_roles->get_names() ) )
+			if ( get_role( $content_struct['role'] ) === null )
 				return new IXR_Error( 403, __( 'The role specified is not valid' ) );
 
 			$user_data['role'] = $content_struct['role'];
-
 		}
 
 		// only set the user details if it was given
@@ -474,12 +467,10 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			$user_data['description'] = $content_struct['bio'];
 
 		if( isset ( $content_struct['user_contacts'] ) ) {
-
 			$user_contacts = _wp_get_user_contactmethods( $user_data );
 			foreach( $content_struct['user_contacts'] as $key => $value ) {
-
 				if( ! array_key_exists( $key, $user_contacts ) )
-					return new IXR_Error( 401, __( 'One of the contact method specified is not valid' ) );
+					return new IXR_Error( 403, __( 'One of the contact method specified is not valid' ) );
 
 				$user_data[ $key ] = $value;
 			}
