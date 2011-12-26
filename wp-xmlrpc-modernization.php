@@ -1876,32 +1876,17 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( !$user = $this->login( $username, $password ) )
 			return $this->error;
 
-		$post_type_names = get_post_types('', 'names');
+		do_action( 'xmlrpc_call', 'wp.getPostType' );
 
-		if( ! in_array( $post_type_name, $post_type_names ) )
-			return new IXR_Error( 403, __( 'The post type specified is not valid' ) );
+		if( ! post_type_exists( $post_type_name ) )
+			return new IXR_Error( 403, __( 'Invalid post type.' ) );
 
 		$post_type = get_post_type_object( $post_type_name );
 
-		//capability check
 		if( ! current_user_can( $post_type->cap->edit_posts ) )
-			return new IXR_Error( 401, __( 'Sorry, you are not allowed to edit this post type' ) );
+			return new IXR_Error( 401, __( 'Sorry, you are not allowed to edit this post type.' ) );
 
-		$post_type = (array)$post_type;
-
-		$post_type_data = array(
-			'labels'            => $post_type['labels'],
-			'description'       => $post_type['description'],
-			'capability_type'   => $post_type['capability_type'],
-			'cap'               => $post_type['cap'],
-			'map_meta_cap'      => $post_type['map_meta_cap'],
-			'hierarchical'      => $post_type['hierarchical'],
-			'menu_position'     => $post_type['menu_position'],
-			'taxonomies'        => get_object_taxonomies( $post_type['name'] ),
-			);
-
-		return $post_type_data;
-
+		return $this->prepare_post_type( $post_type );
 	}
 
 	/**
