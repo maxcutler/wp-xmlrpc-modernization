@@ -304,17 +304,18 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @return string user_id
 	 */
 	function wp_newUser( $args ) {
-
-		global $wp_roles;
 		$this->escape($args);
 
 		$blog_id        = (int) $args[0];
 		$username       = $args[1];
 		$password       = $args[2];
 		$content_struct = $args[3];
+		$send_mail      = isset( $args[4] ) ? $args[4] : false;
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
+
+		do_action( 'xmlrpc_call', 'wp.newUser' );
 
 		if ( ! current_user_can( 'create_users' ) )
 			return new IXR_Error( 401, __( 'You are not allowed to create users.' ) );
@@ -322,60 +323,38 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		// this hold all the user data
 		$user_data = array();
 
-		$user_data['user_login'] = '';
-		if( isset ( $content_struct['username'] ) ) {
+		if( empty ( $content_struct['username'] ) )
+			return new IXR_Error( 403, __( 'Username cannot be empty.' ) );
+		$user_data['user_login'] = $content_struct['username'];
 
-			$user_data['user_login'] = sanitize_user( $content_struct['username'] );
-
-			//Remove any non-printable chars from the login string to see if we have ended up with an empty username
-			$user_data['user_login'] = trim( $user_data['user_login'] );
-
-		}
-
-		if( empty ( $user_data['user_login'] ) )
-			return new IXR_Error( 403, __( 'Cannot create a user with an empty login name.' ) );
-		if( username_exists ( $user_data['user_login'] ) )
-			return new IXR_Error( 403, __( 'This username is already registered.' ) );
-
-		//password cannot be empty
 		if( empty ( $content_struct['password'] ) )
 			return new IXR_Error( 403, __( 'Password cannot be empty.' ) );
-
 		$user_data['user_pass'] = $content_struct['password'];
 
-		// check whether email address is valid
-		if( ! is_email( $content_struct['email'] ) )
-			return new IXR_Error( 403, __( 'This email address is not valid' ) );
+		if( empty ( $content_struct['email'] ) )
+			return new IXR_Error( 403, __( 'Email cannot be empty.' ) );
 
-		// check whether it is already registered
+		if( ! is_email( $content_struct['email'] ) )
+			return new IXR_Error( 403, __( 'This email address is not valid.' ) );
+
 		if( email_exists( $content_struct['email'] ) )
-			return new IXR_Error( 403, __( 'This email address is already registered' ) );
+			return new IXR_Error( 403, __( 'This email address is already registered.' ) );
 
 		$user_data['user_email'] = $content_struct['email'];
 
-		// If no role is specified default role is used
-		$user_data['role'] = get_option('default_role');
 		if( isset ( $content_struct['role'] ) ) {
-
-			if( ! isset ( $wp_roles ) )
-				$wp_roles = new WP_Roles ();
-
-			if( ! array_key_exists( $content_struct['role'], $wp_roles->get_names() ) )
-				return new IXR_Error( 403, __( 'The role specified is not valid' ) );
+			if ( get_role( $content_struct['role'] ) === null )
+				return new IXR_Error( 403, __( 'The role specified is not valid.' ) );
 
 			$user_data['role'] = $content_struct['role'];
-
 		}
 
-		$user_data['first_name'] = '';
 		if( isset ( $content_struct['first_name'] ) )
 			$user_data['first_name'] = $content_struct['first_name'];
 
-		$user_data['last_name'] = '';
 		if( isset ( $content_struct['last_name'] ) )
 			$user_data['last_name'] = $content_struct['last_name'];
 
-		$user_data['user_url'] = '';
 		if( isset ( $content_struct['url'] ) )
 			$user_data['user_url'] = $content_struct['url'];
 
@@ -386,6 +365,10 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 		if ( ! $user_id )
 			return new IXR_Error( 500, __( 'Sorry, the new user failed.' ) );
+
+		if ( $send_mail ) {
+			wp_new_user_notification( $user_id, $user_data['user_pass'] );
+		}
 
 		return $user_id;
 	}
