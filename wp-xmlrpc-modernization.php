@@ -2128,8 +2128,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string  $username
 	 *  - string  $password
 	 *  - int     $term_id
-	 *  - array   $content_struct contains:
-	 *      - 'taxonomy'
+	 *  - string  $taxnomy_name
 	 * @return boolean true
 	 */
 	function wp_deleteTerm( $args ) {
@@ -2138,38 +2137,37 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
-		$term_ID            = (int)$args[3];
-		$content_struct     = $args[4];
+		$term_id            = (int) $args[3];
+		$taxonomy_name      = $args[4];
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
-		if ( ! taxonomy_exists( $content_struct['taxonomy'] ) )
-			return new IXR_Error( 403, __( 'Invalid taxonomy' ) );
+		do_action( 'xmlrpc_call', 'wp.editTerm' );
 
-		$taxonomy = get_taxonomy( $content_struct['taxonomy'] );
+		if ( ! taxonomy_exists( $taxonomy_name ) )
+			return new IXR_Error( 403, __( 'Invalid taxonomy.' ) );
+
+		$taxonomy = get_taxonomy( $taxonomy_name );
 
 		if( ! current_user_can( $taxonomy->cap->delete_terms ) )
-			return new IXR_Error( 401, __( 'You are not allowed to delete terms in this taxonomy' ) );
+			return new IXR_Error( 401, __( 'You are not allowed to delete terms in this taxonomy.' ) );
 
-		$term = get_term ( $term_ID, $content_struct['taxonomy'] );
+		$term = get_term ( $term_id, $taxonomy_name );
 
 		if ( is_wp_error( $term ) )
-			return new IXR_Error(500, $term->get_error_message());
+			return new IXR_Error( 500, $term->get_error_message() );
 
 		if ( ! $term )
-			return new IXR_Error(500, __('The specified term does not exist'));
+			return new IXR_Error( 404, __('Invalid term ID.') );
 
-		if( $term_ID == get_option('default_category') )
-			return new IXR_Error( 403, __( 'You cannot delete the default category' ) );
-
-		$result = wp_delete_term( $term_ID, $content_struct['taxonomy'] );
+		$result = wp_delete_term( $term_id, $taxonomy_name );
 
 		if ( is_wp_error( $result ) )
-			return new IXR_Error(500, $term->get_error_message());
+			return new IXR_Error( 500, $term->get_error_message() );
 
 		if ( ! $result )
-			return new IXR_Error(500, __('For some strange yet very annoying reason, this term could not be deleted.'));
+			return new IXR_Error( 500, __('Sorry, deleting the term failed.') );
 
 		return $result;
 	}
