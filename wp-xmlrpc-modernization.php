@@ -491,15 +491,15 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Delete a  post
+	 * Delete a user
 	 *
 	 * @uses wp_delete_user()
 	 * @param array $args Method parameters. Contains:
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
-	 *  - array   $user_ids
-	 * @return array user_ids
+	 *  - int     $user_id
+	 * @return True when user is deleted.
 	 */
 	function wp_deleteUser( $args ) {
 		$this->escape( $args );
@@ -507,7 +507,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$blog_id    = (int) $args[0];
 		$username   = $args[1];
 		$password   = $args[2];
-		$user_IDs   = $args[3]; // can be an array of user ID's
+		$user_id    = (int) $args[3];
 
 		if( ! $user = $this->login( $username, $password ) )
 			return $this->error;
@@ -515,34 +515,13 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if( ! current_user_can( 'delete_users' ) )
 			return new IXR_Error( 401, __( 'You are not allowed to delete users.' ) );
 
-		// if only a single ID is given convert it to an array
-		if( ! is_array( $user_IDs ) )
-			$user_IDs = array( (int)$user_IDs );
+		if( ! get_userdata( $user_id ) )
+			return new IXR_Error( 404, __('Invalid user ID.' ) );
 
-		foreach( $user_IDs as $user_ID ) {
-
-			$user_ID = (int) $user_ID;
-
-			if( ! get_userdata( $user_ID ) )
-			return new IXR_Error(404, __('Sorry, one of the given user does not exist.'));
-
-			if( $user->ID == $user_ID )
+		if( $user->ID == $user_id )
 			return new IXR_Error( 401, __( 'You cannot delete yourself.' ) );
 
-		}
-
-		// this holds all the id of deleted users and return it
-		$deleted_users = array();
-
-		foreach( $user_IDs as $user_ID ) {
-
-			$result = wp_delete_user( $user_ID );
-			if ( $result )
-				$deleted_users[] = $user_ID;
-
-		}
-
-		return $deleted_users;
+		return wp_delete_user( $user_id );
 	}
 
 	/**
