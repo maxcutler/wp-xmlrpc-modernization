@@ -512,6 +512,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
+		do_action( 'xmlrpc_call', 'wp.deleteUser' );
+
 		if( ! current_user_can( 'delete_users' ) )
 			return new IXR_Error( 401, __( 'You are not allowed to delete users.' ) );
 
@@ -557,6 +559,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
+		do_action( 'xmlrpc_call', 'wp.getUser' );
+
 		$user_data = get_userdata( $user_id );
 
 		if( ! $user_data )
@@ -598,6 +602,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
+
+		do_action( 'xmlrpc_call', 'wp.getUsers' );
 
 		if( ! current_user_can( 'edit_users' ))
 			return new IXR_Error( 401, __( 'Sorry, you cannot edit users.' ) );
