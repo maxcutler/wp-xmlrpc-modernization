@@ -647,9 +647,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string  $username
 	 *  - string  $password
 	 *  - array     $content_struct.
-	 *      The $content_struct must contain:
-	 *      - 'post_type'
-	 *      Also, it can optionally contain:
+	 *      The $content_struct can optionally contain:
+	 *      - 'post_type' (defaults to 'post')
 	 *      - 'post_status'
 	 *      - 'wp_password'
 	 *      - 'wp_slug
@@ -672,108 +671,97 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *      - 'categories'
 	 *      - 'mt_keywords'
 	 *      - 'wp_post_format'
-	 *  - boolean $publish optional. Defaults to true
-	 * @return string post_id
+	 * @return int post_id
 	 */
 	function wp_newPost( $args ) {
 		$this->escape($args);
 
-		$blog_id        = (int) $args[0]; // for future use
+		$blog_id        = (int) $args[0];
 		$username       = $args[1];
 		$password       = $args[2];
 		$content_struct = $args[3];
-		$publish        = isset( $args[4] ) ? $args[4] : false;
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
-		$post_type = get_post_type_object( $content_struct['post_type'] );
-		if( ! ( (bool)$post_type ) )
-			return new IXR_Error( 403, __( 'Invalid post type' ) );
+		do_action( 'xmlrpc_call', 'wp.newPost' );
+
+		if ( isset ( $content_struct['post_type'] ) )
+			$post_type_name = $content_struct['post_type'];
+		else
+			$post_type_name = 'post';
+
+		if( ! post_type_exists( $post_type_name ) )
+			return new IXR_Error( 403, __( 'Invalid post type.' ) );
+
+		$post_type = get_post_type_object( $post_type_name );
 
 		if( ! current_user_can( $post_type->cap->edit_posts ) )
-			return new IXR_Error( 401, __( 'Sorry, you are not allowed to create posts in this post type' ));
+			return new IXR_Error( 401, __( 'Sorry, you are not allowed to create posts of this post type.' ));
 
 		// this holds all the post data needed
 		$post_data = array();
-		$post_data['post_type'] = $content_struct['post_type'];
+		$post_data['post_type'] = $post_type_name;
 
-		$post_data['post_status'] = $publish ? 'publish' : 'draft';
+		if ( isset ( $content_struct['post_status'] ) )
+			$post_data['post_status'] = $content_struct['post_status'];
 
-		if( isset ( $content_struct["{$content_struct['post_type']}_status"] ) )
-			$post_data['post_status'] = $content_struct["{$post_data['post_type']}_status"];
+		if( isset ( $content_struct["{$post_type_name}_status"] ) )
+			$post_data['post_status'] = $content_struct["{$post_type_name}_status"];
 
 		switch ( $post_data['post_status'] ) {
-
 			case 'draft':
 				break;
 			case 'pending':
 				break;
 			case 'private':
 				if( ! current_user_can( $post_type->cap->publish_posts ) )
-					return new IXR_Error( 401, __( 'Sorry, you are not allowed to create private posts in this post type' ));
+					return new IXR_Error( 401, __( 'Sorry, you are not allowed to create private posts of this post type.' ) );
 				break;
 			case 'publish':
 				if( ! current_user_can( $post_type->cap->publish_posts ) )
-					return new IXR_Error( 401, __( 'Sorry, you are not allowed to publish posts in this post type' ));
+					return new IXR_Error( 401, __( 'Sorry, you are not allowed to publish posts of this post type' ) );
 				break;
 			default:
-				return new IXR_Error( 401, __( 'Invalid post status' ) );
+				return new IXR_Error( 403, __( 'Invalid post status.' ) );
 				break;
-
 		}
 
-		// Only use a password if one was given.
-		if ( isset( $content_struct['wp_password'] ) ) {
-
-			if( ! current_user_can( $post_type->cap->publish_posts ) )
-				return new IXR_Error( 401, __( 'Sorry, you are not allowed to create password protected posts in this post type' ) );
-
+		if ( isset( $content_struct['wp_password'] ) )
 			$post_data['post_password'] = $content_struct['wp_password'];
 
-		}
-
-		// Let WordPress generate the post_name (slug) unless one has been provided.
-		$post_data['post_name'] = "";
 		if ( isset( $content_struct['wp_slug'] ) )
 			$post_data['post_name'] = $content_struct['wp_slug'];
 
 		if ( isset( $content_struct['wp_page_order'] ) ) {
+			if( ! post_type_supports( $post_type_name , 'page-attributes' ) )
+				return new IXR_Error( 403, __( 'This post type does not support page attributes.' ) );
 
-			if( ! post_type_supports( $content_struct['post_type'] , 'page-attributes' ) )
-				return new IXR_Error( 401, __( 'This post type does not support page attributes.' ) );
-
-			$post_data['menu_order'] = (int)$content_struct['wp_page_order'];
-
+			$post_data['menu_order'] = (int) $content_struct['wp_page_order'];
 		}
 
 		if ( isset( $content_struct['wp_page_parent_id'] ) ) {
-
 			if( ! $post_type->hierarchical )
-				return new IXR_Error( 401, __( 'This post type does not support post hierarchy.' ) );
+				return new IXR_Error( 403, __( 'This post type does not support post hierarchy.' ) );
 
 			// validating parent ID
-			$parent_ID = (int)$content_struct['wp_page_parent_id'];
-			if( $parent_ID != 0 ) {
-
-				$parent_post = (array)wp_get_single_post( $parent_ID );
+			$parent_id = (int) $content_struct['wp_page_parent_id'];
+			if( $parent_id != 0 ) {
+				$parent_post = (array) wp_get_single_post( $parent_id );
 				if ( empty( $parent_post['ID'] ) )
-					return new IXR_Error( 401, __( 'Invalid parent ID.' ) );
+					return new IXR_Error( 403, __( 'Invalid parent ID.' ) );
 
-				if ( $parent_post['post_type'] != $content_struct['post_type'] )
-					return new IXR_Error( 401, __( 'The parent post is of different post type.' ) );
-
+				if ( $parent_post['post_type'] != $post_type_name )
+					return new IXR_Error( 403, __( 'The parent post is of different post type.' ) );
 			}
 
-			$post_data['post_parent'] = $content_struct['wp_page_parent_id'];
-
+			$post_data['post_parent'] = $parent_id;
 		}
 
 		// page template is only supported only by pages
 		if ( isset( $content_struct['wp_page_template'] ) ) {
-
-			if( $content_struct['post_type'] != 'page' )
-				return new IXR_Error( 401, __( 'Page templates are only supported by pages.' ) );
+			if( $post_type_name != 'page' )
+				return new IXR_Error( 403, __( 'Page templates are only supported by pages.' ) );
 
 			// validating page template
 			$page_templates = get_page_templates( );
@@ -783,161 +771,118 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 				return new IXR_Error( 403, __( 'Invalid page template.' ) );
 
 			$post_data['page_template'] = $content_struct['wp_page_template'];
-
 		}
 
-		$post_data['post_author '] = $user->ID;
+		$post_data['post_author'] = $user->ID;
 
 		// If an author id was provided then use it instead.
-		if( isset( $content_struct['wp_author_id'] ) && ( $user->ID != (int)$content_struct['wp_author_id'] ) ) {
-
-			if( ! post_type_supports( $content_struct['post_type'] , 'author' ) )
-				return new IXR_Error( 401, __( 'This post type does not support to set author.' ) );
+		if( isset( $content_struct['wp_author_id'] ) && ( $user->ID != (int) $content_struct['wp_author_id'] ) ) {
+			if( ! post_type_supports( $post_type_name, 'author' ) )
+				return new IXR_Error( 403, __( 'This post type does not support setting an author.' ) );
 
 			if( ! current_user_can( $post_type->cap->edit_others_posts ) )
 				return new IXR_Error( 401, __( 'You are not allowed to create posts as this user.' ) );
 
-			$author_ID = (int)$content_struct['wp_author_id'];
+			$author_id = (int) $content_struct['wp_author_id'];
 
-			$author = get_userdata( $author_ID );
+			$author = get_userdata( $author_id );
 			if( ! $author )
 				return new IXR_Error( 404, __( 'Invalid author ID.' ) );
 
-			$post_data['post_author '] = $author_ID;
-
+			$post_data['post_author '] = $author_id;
 		}
 
 		if( isset ( $content_struct['title'] ) ) {
-
-			if( ! post_type_supports( $content_struct['post_type'] , 'title' ) )
-				return new IXR_Error( 401, __('This post type does not support title attribute.') );
+			if( ! post_type_supports( $post_type_name, 'title' ) )
+				return new IXR_Error( 403, __( 'This post type does not support title attribute.' ) );
 
 			$post_data['post_title'] = $content_struct['title'];
-
 		}
 
 		if( isset ( $content_struct['description'] ) ) {
-
-			if( ! post_type_supports( $content_struct['post_type'] , 'editor' ) )
-				return new IXR_Error( 401, __( 'This post type does not support post content.' ) );
+			if( ! post_type_supports( $post_type_name, 'editor' ) )
+				return new IXR_Error( 403, __( 'This post type does not support post content.' ) );
 
 			$post_data['post_content'] = $content_struct['description'];
-
 		}
 
 		if( isset ( $content_struct['mt_excerpt'] ) ) {
-
-			if( ! post_type_supports( $content_struct['post_type'] , 'excerpt' ) )
-				return new IXR_Error( 401, __( 'This post type does not support post excerpt.' ) );
+			if( ! post_type_supports( $post_type_name, 'excerpt' ) )
+				return new IXR_Error( 403, __( 'This post type does not support post excerpt.' ) );
 
 			$post_data['post_excerpt'] = $content_struct['mt_excerpt'];
-
 		}
 
-		if( post_type_supports( $content_struct['post_type'], 'comments' ) ) {
+		if( isset( $content_struct['mt_allow_comments'] ) ) {
+			if( ! post_type_supports( $post_type_name, 'comments' ) )
+				return new IXR_Error( 403, __( 'This post type does not support comments.' ) );
 
-			$post_data['comment_status'] = get_option('default_comment_status');
-
-			if( isset( $content_struct['mt_allow_comments'] ) ) {
-
-				if( ! is_numeric( $content_struct['mt_allow_comments'] ) ) {
-
-					switch ( $content_struct['mt_allow_comments'] ) {
-						case 'closed':
-							$post_data['comment_status']= 'closed';
-							break;
-						case 'open':
-							$post_data['comment_status'] = 'open';
-							break;
-						default:
-							return new IXR_Error( 401, __( 'Invalid comment option.' ) );
-					}
-
-				} else {
-
-					switch ( (int) $content_struct['mt_allow_comments'] ) {
-						case 0: // for backward compatiblity
-						case 2:
-							$post_data['comment_status'] = 'closed';
-							break;
-						case 1:
-							$post_data['comment_status'] = 'open';
-							break;
-						default:
-							return new IXR_Error( 401, __( 'Invalid comment option.' ) );
-					}
-
+			if( ! is_numeric( $content_struct['mt_allow_comments'] ) ) {
+				switch ( $content_struct['mt_allow_comments'] ) {
+					case 'closed':
+						$post_data['comment_status']= 'closed';
+						break;
+					case 'open':
+						$post_data['comment_status'] = 'open';
+						break;
+					default:
+						return new IXR_Error( 403, __( 'Invalid comment status option.' ) );
 				}
-
-			}
-
-		} else {
-
-			if( isset( $content_struct['mt_allow_comments'] ) )
-				return new IXR_Error( 401, __( 'This post type does not support comments.' ) );
-
-		}
-
-		if( post_type_supports( $content_struct['post_type'], 'trackbacks' ) ) {
-
-			$post_data['ping_status'] = get_option('default_ping_status');
-
-			if( isset( $content_struct['mt_allow_pings'] ) ) {
-
-				if ( ! is_numeric( $content_struct['mt_allow_pings'] ) ) {
-
-					switch ( $content_struct['mt_allow_pings'] ) {
-						case 'closed':
-							$post_data['ping_status']= 'closed';
-							break;
-						case 'open':
-							$post_data['ping_status'] = 'open';
-							break;
-						default:
-							return new IXR_Error( 401, __( 'Invalid ping option.' ) );
-					}
-
-				} else {
-
-					switch ( (int) $content_struct['mt_allow_pings'] ) {
-						case 0:
-						case 2:
-							$post_data['ping_status'] = 'closed';
-							break;
-						case 1:
-							$post_data['ping_status'] = 'open';
-							break;
-						default:
-							return new IXR_Error( 401, __( 'Invalid ping option.' ) );
-					}
-
+			} else {
+				switch ( (int) $content_struct['mt_allow_comments'] ) {
+					case 0: // for backward compatiblity
+					case 2:
+						$post_data['comment_status'] = 'closed';
+						break;
+					case 1:
+						$post_data['comment_status'] = 'open';
+						break;
+					default:
+						return new IXR_Error( 403, __( 'Invalid comment status option.' ) );
 				}
-
 			}
-
-		} else {
-
-			if( isset( $content_struct['mt_allow_pings'] ) )
-				return new IXR_Error( 401, __( 'This post type does not support trackbacks.' ) );
-
 		}
 
-		$post_data['post_more'] = null;
+		if( isset( $content_struct['mt_allow_pings'] ) ) {
+			if( ! post_type_supports( $content_struct['post_type'], 'trackbacks' ) )
+				return new IXR_Error( 403, __( 'This post type does not support trackbacks.' ) );
+
+			if ( ! is_numeric( $content_struct['mt_allow_pings'] ) ) {
+				switch ( $content_struct['mt_allow_pings'] ) {
+					case 'closed':
+						$post_data['ping_status']= 'closed';
+						break;
+					case 'open':
+						$post_data['ping_status'] = 'open';
+						break;
+					default:
+						return new IXR_Error( 403, __( 'Invalid ping option.' ) );
+				}
+			} else {
+				switch ( (int) $content_struct['mt_allow_pings'] ) {
+					case 0:
+					case 2:
+						$post_data['ping_status'] = 'closed';
+						break;
+					case 1:
+						$post_data['ping_status'] = 'open';
+						break;
+					default:
+						return new IXR_Error( 403, __( 'Invalid ping option.' ) );
+				}
+			}
+		}
+
 		if( isset( $content_struct['mt_text_more'] ) ) {
-
 			$post_data['post_more'] = $content_struct['mt_text_more'];
 			$post_data['post_content'] = $post_data['post_content'] . '<!--more-->' . $post_data['post_more'];
-
 		}
 
-		$post_data['to_ping'] = null;
 		if ( isset( $content_struct['mt_tb_ping_urls'] ) ) {
-
 			$post_data['to_ping'] = $content_struct['mt_tb_ping_urls'];
 
-			if ( is_array( $to_ping ) )
-				$post_data['to_ping'] = implode(' ', $to_ping);
-
+			if ( is_array( $post_data['to_ping'] ) )
+				$post_data['to_ping'] = implode( ' ', $post_data['to_ping'] );
 		}
 
 		// Do some timestamp voodoo
