@@ -814,6 +814,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
+		do_action( 'xmlrpc_call', 'wp.getPostTmers' );
+
 		$post = wp_get_single_post( $post_id, ARRAY_A );
 		if ( empty( $post['ID'] ) )
 			return new IXR_Error( 404, __( 'Invalid post ID.' ) );
@@ -830,7 +832,13 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( is_wp_error( $terms ) )
 			return new IXR_Error( 500 , $terms->get_error_message() );
 
-		return $terms;
+		$struct = array();
+
+		foreach ( $terms as $term ) {
+			$struct[] = $this->prepare_term( $term );
+		}
+
+		return $struct;
 	}
 
 	/**
