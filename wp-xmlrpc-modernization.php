@@ -814,7 +814,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
-		do_action( 'xmlrpc_call', 'wp.getPostTmers' );
+		do_action( 'xmlrpc_call', 'wp.getPostTerms' );
 
 		$post = wp_get_single_post( $post_id, ARRAY_A );
 		if ( empty( $post['ID'] ) )
@@ -851,6 +851,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string  $password
 	 *  - int     $post_id
 	 *  - array   $content_struct contains term_ids with taxonomy as keys
+	 *  - bool    $append
 	 * @return boolean true
 	 */
 	function wp_setPostTerms( $args ) {
@@ -866,6 +867,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
+		do_action( 'xmlrpc_call', 'wp.setPostTerms' );
+
 		$post = wp_get_single_post( $post_ID, ARRAY_A );
 		if ( empty( $post['ID'] ) )
 			return new IXR_Error( 404, __( 'Invalid post ID.' ) );
@@ -873,7 +876,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$post_type = get_post_type_object( $post['post_type'] );
 
 		if( ! current_user_can( $post_type->cap->edit_post , $post_ID ) )
-			return new IXR_Error( 401, __( 'Sorry, You are not allowed to edit this post.' ));
+			return new IXR_Error( 401, __( 'Sorry, You are not allowed to edit this post.' ) );
 
 		$post_type_taxonomies = get_object_taxonomies( $post['post_type'] );
 
@@ -881,12 +884,11 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 		// validating term ids
 		foreach( $taxonomies as $taxonomy ) {
-
 			if( ! in_array( $taxonomy , $post_type_taxonomies ) )
-				return new IXR_Error( 401, __( 'Sorry, one of the given taxonomy is not supported by the post type.' ));
+				return new IXR_Error( 401, __( 'Sorry, one of the given taxonomy is not supported by the post type.' ) );
 
-			$term_ids = $content_struct[ $taxonomy ];
-			foreach ( $term_ids as $term_id) {
+			$term_ids = $content_struct[$taxonomy];
+			foreach ( $term_ids as $term_id ) {
 
 				$term = get_term( $term_id, $taxonomy );
 
@@ -894,23 +896,18 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 					return new IXR_Error( 500, $term->get_error_message() );
 
 				if ( ! $term )
-					return new IXR_Error( 401, __( 'Invalid term ID' ) );
-
+					return new IXR_Error( 403, __( 'Invalid term ID' ) );
 			}
-
 		}
 
 		foreach( $taxonomies as $taxonomy ) {
-
 			$term_ids = $content_struct[ $taxonomy ];
 			$term_ids = array_map( 'intval', $term_ids );
 			$term_ids = array_unique( $term_ids );
 			wp_set_object_terms( $post_ID , $term_ids, $taxonomy , $append);
-
 		}
 
 		return true;
-
 	}
 
 	/**
