@@ -32,33 +32,37 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	function xmlrpc_methods ( $methods ) {
+		$new_methods = array();
 
 		// user management
-		$methods['wp.newUser']          = array( &$this, 'wp_newUser' );
-		$methods['wp.editUser']         = array( &$this, 'wp_editUser' );
-		$methods['wp.deleteUser']       = array( &$this, 'wp_deleteUser' );
-		$methods['wp.getUser']          = array( &$this, 'wp_getUser' );
-		$methods['wp.getUsers']         = array( &$this, 'wp_getUsers' );
+		$new_methods['wp.newUser']          = array( &$this, 'wp_newUser' );
+		$new_methods['wp.editUser']         = array( &$this, 'wp_editUser' );
+		$new_methods['wp.deleteUser']       = array( &$this, 'wp_deleteUser' );
+		$new_methods['wp.getUser']          = array( &$this, 'wp_getUser' );
+		$new_methods['wp.getUsers']         = array( &$this, 'wp_getUsers' );
 
 		// custom post type management
-		$methods['wp.getPost']          = array( &$this, 'wp_getPost' );
-		$methods['wp.getPosts']         = array( &$this, 'wp_getPosts' );
-		$methods['wp.getPostTerms']     = array( &$this, 'wp_getPostTerms' );
-		$methods['wp.setPostTerms']     = array( &$this, 'wp_setPostTerms' );
-		$methods['wp.getPostType']      = array( &$this, 'wp_getPostType' );
-		$methods['wp.getPostTypes']     = array( &$this, 'wp_getPostTypes' );
+		$new_methods['wp.getPost']          = array( &$this, 'wp_getPost' );
+		$new_methods['wp.getPosts']         = array( &$this, 'wp_getPosts' );
+		$new_methods['wp.getPostTerms']     = array( &$this, 'wp_getPostTerms' );
+		$new_methods['wp.setPostTerms']     = array( &$this, 'wp_setPostTerms' );
+		$new_methods['wp.getPostType']      = array( &$this, 'wp_getPostType' );
+		$new_methods['wp.getPostTypes']     = array( &$this, 'wp_getPostTypes' );
 
 		// custom taxonomy management
-		$methods['wp.newTerm']          = array( &$this, 'wp_newTerm' );
-		$methods['wp.editTerm']         = array( &$this, 'wp_editTerm' );
-		$methods['wp.deleteTerm']       = array( &$this, 'wp_deleteTerm' );
-		$methods['wp.getTerm']          = array( &$this, 'wp_getTerm' );
-		$methods['wp.getTerms']         = array( &$this, 'wp_getTerms' );
-		$methods['wp.getTaxonomy']      = array( &$this, 'wp_getTaxonomy' );
-		$methods['wp.getTaxonomies']    = array( &$this, 'wp_getTaxonomies' );
+		$new_methods['wp.newTerm']          = array( &$this, 'wp_newTerm' );
+		$new_methods['wp.editTerm']         = array( &$this, 'wp_editTerm' );
+		$new_methods['wp.deleteTerm']       = array( &$this, 'wp_deleteTerm' );
+		$new_methods['wp.getTerm']          = array( &$this, 'wp_getTerm' );
+		$new_methods['wp.getTerms']         = array( &$this, 'wp_getTerms' );
+		$new_methods['wp.getTaxonomy']      = array( &$this, 'wp_getTaxonomy' );
+		$new_methods['wp.getTaxonomies']    = array( &$this, 'wp_getTaxonomies' );
 
-		return $methods;
-
+		// array_merge will take the values defined in later arguments, so
+		// the plugin will not overwrite any methods defined by WP core
+		// (i.e., plugin will be forward-compatible with future releases of WordPress
+		//  that include these methods built-in)
+		return array_merge( $new_methods, $methods );
 	}
 
 	/**
