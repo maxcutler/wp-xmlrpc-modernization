@@ -647,7 +647,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string  $username
 	 *  - string  $password
 	 *  - array   $fields optional
-	 * @return array can contain (based on $fields parameter):
+	 * @return array contains (based on $fields parameter):
 	 *  - 'post_id'
 	 *  - 'post_title'
 	 *  - 'post_date'
@@ -704,12 +704,12 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	/**
 	 * Retrieve posts.
 	 *
-	 * The optional $fields parameter specifies what fields will be included
-	 * in the response array.
-	 *
 	 * The optional $filter parameter modifies the query used to retrieve posts.
 	 * Accepted keys are 'post_type', 'post_status', 'number', 'offset',
 	 * 'orderby', and 'order'.
+	 *
+	 * The optional $fields parameter specifies what fields will be included
+	 * in the response array.
 	 *
 	 * @uses wp_get_recent_posts()
 	 * @see wp_getPost() for more on $fields
@@ -719,9 +719,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
-	 *  - array   $fields optional
 	 *  - array   $filter optional
-	 * @return array. Contains a collection of posts.
+	 *  - array   $fields optional
+	 * @return array cntains a collection of posts.
 	 */
 	function wp_getPosts( $args ) {
 		$this->escape( $args );
@@ -729,16 +729,12 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$blog_id    = (int) $args[0];
 		$username   = $args[1];
 		$password   = $args[2];
-
-		if ( isset( $args[3] ) )
-			$fields = $args[3];
-		else
-			$fields = apply_filters( 'xmlrpc_default_post_fields', array( 'post', 'terms', 'custom_fields' ), 'wp.getPosts' );
+		$filter     = isset( $args[3] ) ? $args[3] : array();
 
 		if ( isset( $args[4] ) )
-			$filter = $args[4];
+			$fields = $args[4];
 		else
-			$filter = array();
+			$fields = apply_filters( 'xmlrpc_default_post_fields', array( 'post', 'terms', 'custom_fields' ), 'wp.getPosts' );
 
 		if ( !$user = $this->login( $username, $password ) )
 			return $this->error;
