@@ -71,7 +71,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @param obj $user The unprepared WP_User object
 	 * @return array The prepared user data
 	 */
-	function prepare_user( $user ) {
+	function prepare_user( $user, $fields ) {
 		$contact_methods = _wp_get_user_contactmethods();
 
 		$user_contacts = array();
@@ -79,16 +79,17 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			$user_contacts[ $key ] = $user->$key;
 		}
 
-		$_user = array(
-			'user_id'           => $user->ID,
+		$_user = array( 'user_id' => $user->ID );
+
+		$user_fields = array(
 			'username'          => $user->user_login,
 			'first_name'        => $user->user_firstname,
 			'last_name'         => $user->user_lastname,
 			'registered'        => new IXR_Date( mysql2date('Ymd\TH:i:s', $user->user_registered, false) ),
 			'bio'               => $user->user_description,
 			'email'             => $user->user_email,
-			'nickname'          => $user->nickname,
-			'nicename'          => $user->user_nicename,
+			'nick_name'         => $user->nickname,
+			'nice_name'         => $user->user_nicename,
 			'url'               => $user->user_url,
 			'display_name'      => $user->display_name,
 			'capabilities'      => $user->wp_capabilities,
@@ -96,7 +97,19 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			'user_contacts'     => $user_contacts
 		);
 
-		return apply_filters( 'xmlrpc_prepare_user', $_user, $user );
+		if ( in_array( 'all', $fields ) ) {
+			$_user = array_merge( $_user, $user_fields);
+		}
+		else {
+			if ( in_array( 'basic', $fields ) ) {
+				$basic_fields = array( 'username', 'email', 'registered', 'display_name', 'nice_name' );
+				$fields = array_merge( $fields, $basic_fields );
+			}
+			$requested_fields = array_intersect_key( $user_fields, array_flip( $fields ) );
+			$_user = array_merge( $_user, $requested_fields );
+		}
+
+		return apply_filters( 'xmlrpc_prepare_user', $_user, $user, $fields );
 	}
 
 	/**
@@ -486,7 +499,15 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Retrieve  user
+	 * Retrieve a user.
+	 *
+	 * The optional $fields parameter specifies what fields will be included
+	 * in the response array. This should be a list of field names. 'user_id' will
+	 * always be included in the response regardless of the value of $fields.
+	 *
+	 * Instead of, or in addition to, individual field names, conceptual group
+	 * names can be used to specify multiple fields. The available conceptual
+	 * groups are 'basic' and 'all'.
 	 *
 	 * @uses get_userdata()
 	 * @param array $args Method parameters. Contains:
@@ -494,18 +515,22 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string  $username
 	 *  - string  $password
 	 *  - int     $user_id
-	 * @return array contains:
-	 *  - 'user_login'
-	 *  - 'user_firstname'
-	 *  - 'user_lastname'
-	 *  - 'user_registered'
-	 *  - 'user_description'
-	 *  - 'user_email'
-	 *  - 'nickname'
-	 *  - 'user_nicename'
-	 *  - 'user_url'
+	 *  - array   $fields optional
+	 * @return array contains (based on $fields parameter):
+	 *  - 'user_id'
+	 *  - 'username'
+	 *  - 'first_name'
+	 *  - 'last_name'
+	 *  - 'registered'
+	 *  - 'bio'
+	 *  - 'email'
+	 *  - 'nick_name'
+	 *  - 'nice_name'
+	 *  - 'url'
 	 *  - 'display_name'
-	 *  - 'usercontacts'
+	 *  - 'capabilities'
+	 *  - 'user_level'
+	 *  - 'user_contacts'
 	 */
 	function wp_getUser( $args ) {
 		$this->escape( $args );
@@ -514,6 +539,11 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$username   = $args[1];
 		$password   = $args[2];
 		$user_id    = (int) $args[3];
+
+		if ( isset( $args[4] ) )
+			$fields = $args[4];
+		else
+			$fields = apply_filters( 'xmlrpc_default_user_fields', array( 'all' ), 'wp.getUser' );
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
@@ -528,7 +558,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if( ! ( $user_id == $user->ID || current_user_can( 'edit_users' ) ))
 			return new IXR_Error( 401, __( 'Sorry, you cannot edit users.' ) );
 
-		$user = $this->prepare_user( $user_data );
+		$user = $this->prepare_user( $user_data, $fields );
 
 		return $user;
 	}
@@ -539,20 +569,19 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * The optional $filter parameter modifies the query used to retrieve users.
 	 * Accepted keys are 'number' (default: 50), 'offset' (default: 0), and 'role'.
 	 *
+	 * The optional $fields parameter specifies what fields will be included
+	 * in the response array.
+	 *
 	 * @uses get_users()
+	 * @see wp_getUser() for more on $fields and return values
+	 *
 	 * @param array $args Method parameters. Contains:
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
 	 *  - array   $filter optional
-	 * @return array contatins:
-	 *  - 'ID'
-	 *  - 'user_login'
-	 *  - 'user_registered'
-	 *  - 'user_email'
-	 *  - 'user_url'
-	 *  - 'display_name'
-	 *  - 'user_nicename'
+	 *  - array   $fields optional
+	 * @return array users data
 	 */
 	function wp_getUsers( $args ) {
 		$this->escape( $args );
@@ -561,6 +590,11 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$username   = $args[1];
 		$password   = $args[2];
 		$filter     = isset( $args[3] ) ? $args[3] : array();
+
+		if ( isset( $args[4] ) )
+			$fields = $args[4];
+		else
+			$fields = apply_filters( 'xmlrpc_default_user_fields', array( 'basic' ), 'wp.getUsers' );
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
@@ -589,7 +623,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 		$_users = array();
 		foreach ( $users as $user_data ) {
-			$_users[] = $this->prepare_user( get_userdata( $user_data->ID ) );
+			$_users[] = $this->prepare_user( get_userdata( $user_data->ID ), $fields );
 		}
 
 		return $_users;
