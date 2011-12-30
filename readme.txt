@@ -42,5 +42,8 @@ for new methods before incorporation into WordPress core.
 
 == Changelog ==
 
+= 0.6 =
+* Revised implementations of wp.getPost and wp.getPosts. Check docstrings for details.
+
 = 0.5 =
-Initial release containing most of the anticipated methods.
+* Initial release containing most of the anticipated methods.
