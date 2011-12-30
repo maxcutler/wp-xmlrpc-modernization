@@ -649,10 +649,12 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( isset( $args[4] ) )
 			$fields = $args[4];
 		else
-			$fields = array( 'post', 'taxonomies', 'custom_fields' );
+			$fields = apply_filters( 'xmlrpc_default_post_fields', array( 'post', 'terms', 'custom_fields' ), 'wp.getPost' );
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
+
+		do_action( 'xmlrpc_call', 'wp.getPost' );
 
 		$post = wp_get_single_post( $post_id, ARRAY_A );
 
@@ -698,7 +700,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( isset( $args[3] ) )
 			$fields = $args[3];
 		else
-			$fields = array( 'post', 'taxonomies', 'custom_fields' );
+			$fields = apply_filters( 'xmlrpc_default_post_fields', array( 'post', 'terms', 'custom_fields' ), 'wp.getPosts' );
 
 		if ( isset( $args[4] ) )
 			$filter = $args[4];
@@ -707,6 +709,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 		if ( !$user = $this->login( $username, $password ) )
 			return $this->error;
+
+		do_action( 'xmlrpc_call', 'wp.getPosts' );
 
 		$query = array();
 
