@@ -107,96 +107,59 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @return array The prepared post data
 	 */
 	function prepare_post( $post, $fields ) {
-		// pre-calculate conceptual group in_array searches
-		$all_post_fields = in_array( 'post', $fields );
-		$all_taxonomy_fields = in_array( 'taxonomies', $fields );
-
 		// holds the data for this post. built up based on $fields
 		$_post = array( 'postid' => $post['ID'] );
 
-		if ( $all_post_fields || in_array( 'title', $fields ) )
-			$_post['title'] = $post['post_title'];
+		// prepare common post fields
+		$post_fields = array(
+			'post_title' => $post['post_title'],
+			'post_date' => new IXR_Date(mysql2date( 'Ymd\TH:i:s', $post['post_date'], false )),
+			'post_date_gmt' => new IXR_Date(mysql2date( 'Ymd\TH:i:s', $post['post_date_gmt'], false )),
+			'post_modified' => new IXR_Date(mysql2date( 'Ymd\TH:i:s', $post['post_modified'], false )),
+			'post_modified_gmt' => new IXR_Date(mysql2date( 'Ymd\TH:i:s', $post['post_modified_gmt'], false )),
+			'post_status' => $post['post_status'],
+			'post_type' => $post['post_type'],
+			'post_slug' => $post['post_name'],
+			'post_author' => $post['post_author'],
+			'post_password' => $post['post_password'],
+			'post_excerpt' => $post['post_excerpt'],
+			'post_content' => $post['post_content'],
+			'link' => post_permalink( $post['ID'] ),
+			'comment_status' => $post['comment_status'],
+			'ping_status' => $post['ping_status'],
+			'sticky' => ($post['post_type'] === 'post' && is_sticky( $post['ID'] ) ),
+		);
 
-		if ( $all_post_fields || in_array( 'post_date', $fields ) )
-			$_post['post_date'] = new IXR_Date(mysql2date( 'Ymd\TH:i:s', $post['post_date'], false ));
+		// Consider future posts as published
+		if ( $post_fields['post_status'] === 'future' )
+			$post_fields['post_status'] = 'publish';
 
-		if ( $all_post_fields || in_array( 'post_date_gmt', $fields ) )
-			$_post['post_date_gmt'] = new IXR_Date(mysql2date( 'Ymd\TH:i:s', $post['post_date_gmt'], false ));
+		// Fill in blank post format
+		$post_fields['post_format'] = get_post_format( $post['ID'] );
+		if ( empty( $post_fields['post_format'] ) )
+			$post_fields['post_format'] = 'standard';
 
-		if ( $all_post_fields || in_array( 'post_modified', $fields ) )
-			$_post['post_modified'] = new IXR_Date(mysql2date( 'Ymd\TH:i:s', $post['post_modified'], false ));
-
-		if ( $all_post_fields || in_array( 'post_modified_gmt', $fields ) )
-			$_post['post_modified_gmt'] = new IXR_Date(mysql2date( 'Ymd\TH:i:s', $post['post_modified_gmt'], false ));
-
-		if ( $all_post_fields || in_array( 'post_status', $fields ) ) {
-			// Consider future posts as published
-			if ( $post['post_status'] === 'future' )
-				$_post['post_status'] = 'publish';
-			else
-				$_post['post_status'] = $post['post_status'];
+		// Merge requested $post_fields fields into $_post
+		if ( in_array( 'post', $fields ) ) {
+			$_post = array_merge( $_post, $post_fields );
+		} else {
+			$requested_fields = array_intersect_key( $post_fields, array_flip( $fields ) );
+			$_post = array_merge( $_post, $requested_fields );
 		}
 
-		if ( $all_post_fields || in_array( 'post_type', $fields ) )
-			$_post['post_type'] = $post['post_type'];
-
-		if ( $all_post_fields || in_array( 'post_format', $fields ) ) {
-			$post_format = get_post_format( $post['ID'] );
-			if ( empty( $post_format ) )
-				$post_format = 'standard';
-			$_post['post_format'] = $post_format;
-		}
-
-		if ( $all_post_fields || in_array( 'wp_slug', $fields ) )
-			$_post['wp_slug'] = $post['post_name'];
-
-		if ( $all_post_fields || in_array( 'link', $fields ) )
-			$_post['link'] = post_permalink( $post['ID'] );
-
-		if ( $all_post_fields || in_array( 'permaLink', $fields ) )
-			$_post['permaLink'] = post_permalink( $post['ID'] );
-
-		if ( $all_post_fields || in_array( 'userid', $fields ) )
-			$_post['userid'] = $post['post_author'];
-
-		if ( $all_post_fields || in_array( 'wp_author_id', $fields ) )
-			$_post['wp_author_id'] = $post['post_author'];
-
-		if ( $all_post_fields || in_array( 'mt_allow_comments', $fields ) )
-			$_post['mt_allow_comments'] = $post['comment_status'];
-
-		if ( $all_post_fields || in_array( 'mt_allow_pings', $fields ) )
-			$_post['mt_allow_pings'] = $post['ping_status'];
-
-		if ( $all_post_fields || in_array( 'sticky', $fields ) ) {
-			$sticky = null;
-			if( $post['post_type'] == 'post' ) {
-				$sticky = false;
-				if ( is_sticky( $post['ID'] ) )
-					$sticky = true;
-			}
-			$_post['sticky'] = $sticky;
-		}
-
-		if ( $all_post_fields || in_array( 'wp_password', $fields ) )
-			$_post['wp_password'] = $post['post_password'];
-
-		if ( $all_post_fields || in_array( 'mt_excerpt', $fields ) )
-			$_post['mt_excerpt'] = $post['post_excerpt'];
-
-		if ( $all_post_fields || in_array( 'description', $fields ) ) {
-			$post_content = get_extended( $post['post_content'] );
-			$_post['description'] = $post_content['main'];
-			$_post['mt_text_more'] = $post_content['extended'];
-		}
+		$all_taxonomy_fields = in_array( 'taxonomies', $fields );
 
 		if ( $all_taxonomy_fields || in_array( 'terms', $fields ) ) {
-			$post_type_taxonomies = get_object_taxonomies( $post['post_type'] , 'names');
-			$_post['terms'] = wp_get_object_terms( $post['ID'], $post_type_taxonomies );;
+			$post_type_taxonomies = get_object_taxonomies( $post['post_type'] , 'names' );
+			$terms = wp_get_object_terms( $post['ID'], $post_type_taxonomies );
+			$_post['terms'] = array();
+			foreach ( $terms as $term ) {
+				$_post['terms'][] = $this->prepare_term( $term );
+			}
 		}
 
 		// backward compatiblity
-		if ( $all_taxonomy_fields || in_array( 'mt_keywords', $fields ) ) {
+		if ( $all_taxonomy_fields || in_array( 'tags', $fields ) ) {
 			$tagnames = array();
 			$tags = wp_get_post_tags( $post['ID'] );
 			if ( !empty( $tags ) ) {
@@ -206,7 +169,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			} else {
 				$tagnames = '';
 			}
-			$_post['mt_keywords'] = $tagnames;
+			$_post['tags'] = $tagnames;
 		}
 
 		// backward compatiblity
@@ -223,19 +186,14 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			$_post['custom_fields'] = $this->get_custom_fields( $post['ID'] );
 
 		if ( in_array( 'enclosure', $fields ) ) {
-			$enclosure = array();
-			foreach ( (array) get_post_custom( $post['ID'] ) as $key => $val) {
-				if ($key == 'enclosure') {
-					foreach ( (array) $val as $enc ) {
-						$encdata = split("\n", $enc);
-						$enclosure['url'] = trim(htmlspecialchars($encdata[0]));
-						$enclosure['length'] = (int) trim($encdata[1]);
-						$enclosure['type'] = trim($encdata[2]);
-						break 2;
-					}
-				}
+			$_post['enclosure'] = array();
+			$enclosures = (array) get_post_meta( $post['ID'], 'enclosure' );
+			if ( ! empty ( $enclosures ) ) {
+				$encdata = explode("\n", $enclosures[0]);
+				$_post['enclosure']['url'] = trim(htmlspecialchars($encdata[0]));
+				$_post['enclosure']['length'] = (int) trim($encdata[1]);
+				$_post['enclosure']['type'] = trim($encdata[2]);
 			}
-			$_post['enclosure'] = $enclosure;
 		}
 
 		return apply_filters( 'xmlrpc_prepare_post', $_post, $post, $fields );
