@@ -291,7 +291,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
-	 *  - array     $content_struct.
+	 *  - array   $content_struct.
 	 *      The $content_struct must contain:
 	 *      - 'username'
 	 *      - 'password'
@@ -640,14 +640,15 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Retrieve  post
+	 * Retrieve a post
 	 *
 	 * @uses wp_get_single_post()
 	 * @param array $args Method parameters. Contains:
 	 *  - int     $post_id
 	 *  - string  $username
 	 *  - string  $password
-	 * @return array contains:
+	 *  - array   $fields optional
+	 * @return array contains (based on $fields parameter):
 	 *  - 'postid'
 	 *  - 'title'
 	 *  - 'description'
@@ -661,8 +662,10 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - 'wp_author_id'
 	 *  - 'mt_allow_comments'
 	 *  - 'mt_allow_pings'
-	 *  - 'dateCreated'
-	 *  - 'date_created_gmt'
+	 *  - 'post_date'
+	 *  - 'post_date_gmt'
+	 *  - 'post_modified'
+	 *  - 'post_modified_gmt'
 	 *  - 'userid'
 	 *  - 'sticky'
 	 *  - 'custom_fields'
@@ -719,26 +722,26 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
-	 *  - array   $filter optional
 	 *  - array   $fields optional
+	 *  - array   $filter optional
 	 * @return array. Contains a collection of posts.
 	 */
 	function wp_getPosts( $args ) {
 		$this->escape( $args );
 
-		$blog_ID    = (int) $args[0];
+		$blog_id    = (int) $args[0];
 		$username   = $args[1];
 		$password   = $args[2];
 
 		if ( isset( $args[3] ) )
-			$filter = $args[3];
-		else
-			$filter = array();
-
-		if ( isset( $args[4] ) )
-			$fields = $args[4];
+			$fields = $args[3];
 		else
 			$fields = array( 'post', 'taxonomies', 'custom_fields' );
+
+		if ( isset( $args[4] ) )
+			$filter = $args[4];
+		else
+			$filter = array();
 
 		if ( !$user = $this->login( $username, $password ) )
 			return $this->error;
@@ -1032,7 +1035,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if( ! current_user_can( $taxonomy->cap->manage_terms ) )
 			return new IXR_Error( 401, __( 'You are not allowed to create terms in this taxonomy.' ) );
 
-		$taxonomy = (array)$taxonomy;
+		$taxonomy = (array) $taxonomy;
 
 		// hold the data of the term
 		$term_data = array();
@@ -1057,11 +1060,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			$term_data['parent'] = $content_struct['parent'];
 		}
 
-		$term_data['description'] = '';
 		if( isset ( $content_struct['description'] ) )
 			$term_data['description'] = $content_struct['description'];
 
-		$term_data['slug'] = '';
 		if( isset ( $content_struct['slug'] ) )
 			$term_data['slug'] = $content_struct['slug'];
 
@@ -1333,11 +1334,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string  $username
 	 *  - string  $password
 	 *  - string  $taxonomy_name
-	 * @return array contains:
-	 *  - 'labels'
-	 *  - 'cap'
-	 *  - 'hierarchical'
-	 *  - 'object_type'
+	 * @return array (@see get_taxonomy())
 	 */
 	function wp_getTaxonomy( $args ) {
 		$this->escape( $args );
