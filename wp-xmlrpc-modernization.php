@@ -576,12 +576,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$query['offset'] = ( isset( $filter['offset'] ) ) ? absint( $filter['offset'] ) : 0;
 
 		if ( isset( $filter['role'] ) ) {
-			global $wp_roles;
-
-			if( ! isset ( $wp_roles ) )
-				$wp_roles = new WP_Roles ();
-
-			if( ! array_key_exists( $filter['role'], $wp_roles->get_names() ) )
+			if ( get_role( $filter['role'] ) === null )
 				return new IXR_Error( 403, __( 'The role specified is not valid' ) );
 
 			$query['role'] = $filter['role'];
