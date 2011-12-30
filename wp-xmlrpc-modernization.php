@@ -671,7 +671,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * in the response array.
 	 *
 	 * The optional $filter parameter modifies the query used to retrieve posts.
-	 * Accept keys are 'post_type', 'post_status', 'numberposts', 'offset',
+	 * Accept keys are 'post_type', 'post_status', 'number', 'offset',
 	 * 'orderby', and 'order'.
 	 *
 	 * @uses wp_get_recent_posts()
@@ -724,8 +724,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			$query['post_status'] = $filter['post_status'];
 		}
 
-		if ( isset ( $filter['numberposts'] ) ) {
-			$query['numberposts'] = absint( $filter['numberposts'] );
+		if ( isset ( $filter['number'] ) ) {
+			$query['number'] = absint( $filter['number'] );
 		}
 
 		if ( isset ( $filter['offset'] ) ) {
