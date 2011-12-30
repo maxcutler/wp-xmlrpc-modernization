@@ -534,7 +534,10 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Retrieve  users
+	 * Retrieve users.
+	 *
+	 * The optional $filter parameter modifies the query used to retrieve users.
+	 * Accepted keys are 'number' (default: 50), 'offset' (default: 0), and 'role'.
 	 *
 	 * @uses get_users()
 	 * @param array $args Method parameters. Contains:
@@ -671,7 +674,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * in the response array.
 	 *
 	 * The optional $filter parameter modifies the query used to retrieve posts.
-	 * Accept keys are 'post_type', 'post_status', 'number', 'offset',
+	 * Accepted keys are 'post_type', 'post_status', 'number', 'offset',
 	 * 'orderby', and 'order'.
 	 *
 	 * @uses wp_get_recent_posts()
