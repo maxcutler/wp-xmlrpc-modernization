@@ -601,7 +601,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * Retrieve a post.
 	 *
 	 * The optional $fields parameter specifies what fields will be included
-	 * in the response array. This should be a list of field names.
+	 * in the response array. This should be a list of field names. 'postid' will
+	 * always be included in the response regardless of the value of $fields.
 	 *
 	 * Instead of, or in addition to, individual field names, conceptual group
 	 * names can be used to specify multiple fields. The available conceptual
