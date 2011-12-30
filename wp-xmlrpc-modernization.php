@@ -108,7 +108,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 */
 	function prepare_post( $post, $fields ) {
 		// holds the data for this post. built up based on $fields
-		$_post = array( 'postid' => $post['ID'] );
+		$_post = array( 'post_id' => $post['ID'] );
 
 		// prepare common post fields
 		$post_fields = array(
@@ -599,7 +599,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * Retrieve a post.
 	 *
 	 * The optional $fields parameter specifies what fields will be included
-	 * in the response array. This should be a list of field names. 'postid' will
+	 * in the response array. This should be a list of field names. 'post_id' will
 	 * always be included in the response regardless of the value of $fields.
 	 *
 	 * Instead of, or in addition to, individual field names, conceptual group
@@ -614,7 +614,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string  $password
 	 *  - array   $fields optional
 	 * @return array can contain (based on $fields parameter):
-	 *  - 'postid'
+	 *  - 'post_id'
 	 *  - 'post_title'
 	 *  - 'post_date'
 	 *  - 'post_date_gmt'
