@@ -598,7 +598,15 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Retrieve a post
+	 * Retrieve a post.
+	 *
+	 * The optional $fields parameter specifies what fields will be included
+	 * in the response array. This should be a list of field names.
+	 *
+	 * Instead of, or in addition to, individual field names, conceptual group
+	 * names can be used to specify multiple fields. The available conceptual
+	 * groups are 'post' (all basic fields), 'taxonomies', 'custom_fields',
+	 * and 'enclosure'.
 	 *
 	 * @uses wp_get_single_post()
 	 * @param array $args Method parameters. Contains:
@@ -606,33 +614,29 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string  $username
 	 *  - string  $password
 	 *  - array   $fields optional
-	 * @return array contains (based on $fields parameter):
+	 * @return array can contain (based on $fields parameter):
 	 *  - 'postid'
-	 *  - 'title'
-	 *  - 'description'
-	 *  - 'mt_excerpt'
-	 *  - 'post_status'
-	 *  - 'post_type'
-	 *  - 'wp_slug'
-	 *  - 'wp_password'
-	 *  - 'wp_page_order'
-	 *  - 'wp_page_parent_id'
-	 *  - 'wp_author_id'
-	 *  - 'mt_allow_comments'
-	 *  - 'mt_allow_pings'
+	 *  - 'post_title'
 	 *  - 'post_date'
 	 *  - 'post_date_gmt'
 	 *  - 'post_modified'
 	 *  - 'post_modified_gmt'
-	 *  - 'userid'
+	 *  - 'post_status'
+	 *  - 'post_type'
+	 *  - 'post_slug'
+	 *  - 'post_author'
+	 *  - 'post_password'
+	 *  - 'post_excerpt'
+	 *  - 'post_content'
+	 *  - 'link'
+	 *  - 'comment_status'
+	 *  - 'ping_status'
 	 *  - 'sticky'
 	 *  - 'custom_fields'
 	 *  - 'terms'
-	 *  - 'link'
-	 *  - 'permaLink'
 	 *  - 'categories'
-	 *  - 'mt_keywords'
-	 *  - 'wp_post_format'
+	 *  - 'tags'
+	 *  - 'enclosure'
 	 */
 	function wp_getPost( $args ) {
 		$this->escape( $args );
@@ -665,17 +669,17 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	/**
 	 * Retrieve posts.
 	 *
-	 * Besides the common blog_id, username, and password arguments, it takes
-	 * a filter array and a fields array.
+	 * The optional $fields parameter specifies what fields will be included
+	 * in the response array.
 	 *
-	 * Accepted 'filter' keys are 'post_type', 'post_status', 'numberposts', 'offset',
+	 * The optional $filter parameter modifies the query used to retrieve posts.
+	 * Accept keys are 'post_type', 'post_status', 'numberposts', 'offset',
 	 * 'orderby', and 'order'.
 	 *
-	 * The 'fields' array specifies which post fields will be included in the response.
-	 * Values can be either conceptual groups ('post', 'taxonomies', 'custom_fields')
-	 * or specific field names. By default, all fields are returned.
-	 *
 	 * @uses wp_get_recent_posts()
+	 * @see wp_getPost() for more on $fields
+	 * @see get_posts() for more on $filter values
+	 *
 	 * @param array $args Method parameters. Contains:
 	 *  - int     $blog_id
 	 *  - string  $username
