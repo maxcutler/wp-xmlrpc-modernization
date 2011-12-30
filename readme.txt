@@ -43,7 +43,9 @@ for new methods before incorporation into WordPress core.
 == Changelog ==
 
 = 0.6 =
-* Revised implementations of wp.getPost and wp.getPosts. Check docstrings for details.
+* Revised implementations of wp.getPost and wp.getPosts.
+* Added `fields` parameter to wp.getUser and wp.getUsers.
+* Updated method docstrings.
 
 = 0.5 =
 * Initial release containing most of the anticipated methods.
