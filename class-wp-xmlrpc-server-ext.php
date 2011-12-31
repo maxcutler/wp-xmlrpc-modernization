@@ -1,26 +1,7 @@
 <?php
 
-/*
- * Plugin Name: wp-xmlrpc-modernization
- * Description: This plugin extends the basic XML-RPC API exposed by WordPress. Derived from GSoC '11 project.
- * Version: 0.6
- * Author: Max Cutler
- * Author URI: http://www.maxcutler.com
- *
-*/
-
 include_once(ABSPATH . WPINC . '/class-IXR.php');
 include_once(ABSPATH . WPINC . '/class-wp-xmlrpc-server.php');
-
-add_filter( 'wp_xmlrpc_server_class', 'replace_xmlrpc_server_class' );
-
-function replace_xmlrpc_server_class( $class_name ) {
-	// only replace the default XML-RPC class if another plug-in hasn't already changed it
-	if ( $class_name === 'wp_xmlrpc_server' )
-		return 'wp_xmlrpc_server_ext';
-	else
-		return $class_name;
-}
 
 class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
