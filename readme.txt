@@ -46,6 +46,7 @@ for new methods before incorporation into WordPress core.
 * Revised implementations of wp.getPost and wp.getPosts.
 * Added `fields` parameter to wp.getUser and wp.getUsers.
 * Updated method docstrings.
+* Moved new XML-RPC server class implementation to its own file.
 
 = 0.5 =
 * Initial release containing most of the anticipated methods.
