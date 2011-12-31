@@ -68,7 +68,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	/**
 	 * Prepares user data for return in an XML-RPC object
 	 *
-	 * @param obj $user The unprepared WP_User object
+	 * @param WP_User $user The unprepared user object
+	 * @param array $fields The subset of user fields to return
 	 * @return array The prepared user data
 	 */
 	function prepare_user( $user, $fields ) {
