@@ -477,7 +477,18 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( $user->ID == $user_id )
 			return new IXR_Error( 401, __( 'You cannot delete yourself.' ) );
 
-		return wp_delete_user( $user_id );
+		$reassign_id = 'novalue';
+		if ( isset( $args[4] ) ) {
+			$reassign_id = (int) $args[4];
+
+			if ( ! get_userdata( $reassign_id ) )
+				return new IXR_Error( 404, __('Invalid reassign user ID.' ) );
+
+			if ( $reassign_id === $user_id )
+				return new IXR_Error( 401, __( 'You cannot reassign to the user being deleted.' ) );
+		}
+
+		return wp_delete_user( $user_id, $reassign_id );
 	}
 
 	/**
