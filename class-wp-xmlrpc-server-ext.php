@@ -21,6 +21,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$new_methods['wp.deleteUser']       = array( &$this, 'wp_deleteUser' );
 		$new_methods['wp.getUser']          = array( &$this, 'wp_getUser' );
 		$new_methods['wp.getUsers']         = array( &$this, 'wp_getUsers' );
+		$new_methods['wp.getUserInfo']      = array( &$this, 'wp_getUserInfo' );
 
 		// custom post type management
 		$new_methods['wp.getPost']          = array( &$this, 'wp_getPost' );
@@ -608,6 +609,40 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		}
 
 		return $_users;
+	}
+
+	/**
+	 * Retrieve information about the requesting user.
+	 *
+	 * @uses get_userdata()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - array   $fields optional
+	 * @return array (@see wp_getUser)
+	 */
+	function wp_getUserInfo( $args ) {
+		$this->escape( $args );
+
+		$blog_id    = (int) $args[0];
+		$username   = $args[1];
+		$password   = $args[2];
+
+		if ( isset( $args[3] ) )
+			$fields = $args[3];
+		else
+			$fields = apply_filters( 'xmlrpc_default_user_fields', array( 'all' ), 'wp.getUserInfo' );
+
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
+
+		do_action( 'xmlrpc_call', 'wp.getUserInfo' );
+
+		$user_data = get_userdata( $user->ID );
+		$user = $this->prepare_user( $user_data, $fields );
+
+		return $user;
 	}
 
 	/**
