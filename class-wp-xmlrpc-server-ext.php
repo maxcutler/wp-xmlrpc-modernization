@@ -349,7 +349,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *      - 'usercontacts'
 	 *      - 'password'
 	 *  - boolean $send_mail optional. Defaults to false
-	 * @return int user_id
+	 * @return bool True, on success.
 	 */
 	function wp_editUser( $args ) {
 		$this->escape( $args );
@@ -441,7 +441,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( ! $result )
 			return new IXR_Error( 500, __( 'Sorry, the user cannot be updated. Something wrong happened.' ) );
 
-		return $result;
+		return true;
 	}
 
 	/**
