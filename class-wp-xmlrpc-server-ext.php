@@ -85,7 +85,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		}
 		else {
 			if ( in_array( 'basic', $fields ) ) {
-				$basic_fields = array( 'username', 'email', 'registered', 'display_name', 'nice_name' );
+				$basic_fields = array( 'username', 'email', 'registered', 'display_name', 'nicename' );
 				$fields = array_merge( $fields, $basic_fields );
 			}
 			$requested_fields = array_intersect_key( $user_fields, array_flip( $fields ) );
