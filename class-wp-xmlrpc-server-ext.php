@@ -70,8 +70,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			'registered'        => new IXR_Date( mysql2date( 'Ymd\TH:i:s', $user->user_registered, false ) ),
 			'bio'               => $user->user_description,
 			'email'             => $user->user_email,
-			'nick_name'         => $user->nickname,
-			'nice_name'         => $user->user_nicename,
+			'nickname'          => $user->nickname,
+			'nicename'          => $user->user_nicename,
 			'url'               => $user->user_url,
 			'display_name'      => $user->display_name,
 			'capabilities'      => $user->wp_capabilities,
@@ -343,7 +343,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *      - 'website'
 	 *      - 'role'
 	 *      - 'nickname'
-	 *      - 'usernicename'
+	 *      - 'nicename'
 	 *      - 'bio'
 	 *      - 'usercontacts'
 	 *      - 'password'
@@ -413,7 +413,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( isset( $content_struct['nickname'] ) )
 			$user_data['nickname'] = $content_struct['nickname'];
 
-		if ( isset( $content_struct['usernicename'] ) )
+		if ( isset( $content_struct['nicename'] ) )
 			$user_data['user_nicename'] = $content_struct['nicename'];
 
 		if ( isset( $content_struct['bio'] ) )
@@ -505,8 +505,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - 'registered'
 	 *  - 'bio'
 	 *  - 'email'
-	 *  - 'nick_name'
-	 *  - 'nice_name'
+	 *  - 'nickname'
+	 *  - 'nicename'
 	 *  - 'url'
 	 *  - 'display_name'
 	 *  - 'capabilities'
