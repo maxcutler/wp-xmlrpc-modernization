@@ -775,12 +775,17 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	/**
 	 * Retrieve post terms
 	 *
+	 * The optional $group_by_taxonomy parameter specifies whether
+	 * the returned array should have terms grouped by taxonomy or
+	 * a flat list.
+	 *
 	 * @uses wp_get_object_terms()
 	 * @param array $args Method parameters. Contains:
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
 	 *  - int     $post_id
+	 *  - bool    $group_by_taxonomy optional
 	 * @return array term data
 	 */
 	function wp_getPostTerms( $args ) {
@@ -790,6 +795,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$username           = $args[1];
 		$password           = $args[2];
 		$post_id            = (int) $args[3];
+		$group_by_taxonomy        = isset( $args[4] ) ? $args[4] : true;
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
@@ -815,7 +821,17 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$struct = array();
 
 		foreach ( $terms as $term ) {
-			$struct[] = $this->prepare_term( $term );
+			if ( $group_by_taxonomy ) {
+				$taxonomy = $term->taxonomy;
+
+				if ( ! in_array( $taxonomy, $struct ) )
+					$struct[$taxonomy] = array();
+
+				$struct[$taxonomy][] = $this->prepare_term( $term );
+			}
+			else {
+				$struct[] = $this->prepare_term( $term );
+			}
 		}
 
 		return $struct;
