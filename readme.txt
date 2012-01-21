@@ -43,10 +43,12 @@ for new methods before incorporation into WordPress core.
 == Changelog ==
 
 = 0.6 =
-* Revised implementations of wp.getPost and wp.getPosts.
+* Revised implementations of many methods.
 * Added `fields` parameter to wp.getUser and wp.getUsers.
 * Updated method docstrings.
 * Moved new XML-RPC server class implementation to its own file.
+* Added new wp.getUserInfo method.
+* Added `group_by_taxonomy` parameter to wp.getPostTerms.
 
 = 0.5 =
 * Initial release containing most of the anticipated methods.
