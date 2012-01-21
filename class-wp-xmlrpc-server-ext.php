@@ -1067,7 +1067,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *      - 'parent'
 	 *      - 'description'
 	 *      - 'slug'
-	 * @return int term_id
+	 * @return bool True, on success.
 	 */
 	function wp_editTerm( $args ) {
 		$this->escape( $args );
@@ -1141,7 +1141,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( ! $term )
 			return new IXR_Error( 500, __('Sorry, editing the term failed.') );
 
-		return $term['term_id'];
+		return true;
 	}
 
 	/**
