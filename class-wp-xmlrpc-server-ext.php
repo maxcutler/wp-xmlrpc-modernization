@@ -1014,7 +1014,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			if ( ! current_user_can( $post_type->cap->edit_posts ) )
 				continue;
 
-			$struct[$post_type->name] = $this->prepare_post_type( $post_type );
+			$struct[] = $this->prepare_post_type( $post_type );
 		}
 
 		return $struct;
