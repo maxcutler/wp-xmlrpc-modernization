@@ -1365,7 +1365,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			if ( ! current_user_can( $taxonomy->cap->edit_terms ) )
 				continue;
 
-			$struct[$taxonomy->name] = $this->prepare_taxonomy( $taxonomy );
+			$struct[] = $this->prepare_taxonomy( $taxonomy );
 		}
 
 		return $struct;
