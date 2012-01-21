@@ -1067,7 +1067,6 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *      - 'parent'
 	 *      - 'description'
 	 *      - 'slug'
-	 *  - boolean $send_mail optional. Defaults to false
 	 * @return int term_id
 	 */
 	function wp_editTerm( $args ) {
