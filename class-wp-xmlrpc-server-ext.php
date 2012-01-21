@@ -1153,8 +1153,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
-	 *  - int     $term_id
 	 *  - string  $taxnomy_name
+	 *  - int     $term_id
 	 * @return boolean true
 	 */
 	function wp_deleteTerm( $args ) {
@@ -1163,8 +1163,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
-		$term_id            = (int) $args[3];
-		$taxonomy_name      = $args[4];
+		$taxonomy_name      = $args[3];
+		$term_id            = (int) $args[4];
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
