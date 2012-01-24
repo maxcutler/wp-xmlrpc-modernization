@@ -870,7 +870,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			if ( $group_by_taxonomy ) {
 				$taxonomy = $term->taxonomy;
 
-				if ( ! in_array( $taxonomy, $struct ) )
+				if ( ! array_key_exists( $taxonomy, $struct ) )
 					$struct[$taxonomy] = array();
 
 				$struct[$taxonomy][] = $this->prepare_term( $term );
