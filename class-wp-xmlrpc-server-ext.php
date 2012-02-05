@@ -51,7 +51,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Prepares user data for return in an XML-RPC object
+	 * Prepares user data for return in an XML-RPC object.
 	 *
 	 * @param WP_User $user The unprepared user object
 	 * @param array $fields The subset of user fields to return
@@ -99,7 +99,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Prepares post data for return in an XML-RPC object
+	 * Prepares post data for return in an XML-RPC object.
 	 *
 	 * @param array $post The unprepared post data
 	 * @param array $fields The subset of post fields to return
@@ -200,7 +200,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Prepares taxonomy data for return in an XML-RPC object
+	 * Prepares taxonomy data for return in an XML-RPC object.
 	 *
 	 * @param array|object $taxonomy The unprepared taxonomy data
 	 * @return array The prepared taxonomy data
@@ -214,7 +214,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Prepares term data for return in an XML-RPC object
+	 * Prepares term data for return in an XML-RPC object.
 	 *
 	 * @param array $term The unprepared term data
 	 * @return array The prepared term data
@@ -226,7 +226,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Prepares post type data for return in an XML-RPC object
+	 * Prepares post type data for return in an XML-RPC object.
 	 *
 	 * @param array|object $post_type The unprepared post type data
 	 * @return array The prepared post type data
@@ -240,14 +240,14 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Create a new user
+	 * Create a new user.
 	 *
 	 * @uses wp_insert_user()
 	 * @param array $args Method parameters. Contains:
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
-	 *  - array   $content_struct.
+	 *  - array   $content_struct
 	 *      The $content_struct must contain:
 	 *      - 'username'
 	 *      - 'password'
@@ -331,7 +331,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Edit a new user
+	 * Edit a user.
 	 *
 	 * @uses wp_update_user()
 	 * @param array $args Method parameters. Contains:
@@ -339,7 +339,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string  $username
 	 *  - string  $password
 	 *  - int     $user_id
-	 *  - array   $content_struct.
+	 *  - array   $content_struct
 	 *      It can optionally contain:
 	 *      - 'email'
 	 *      - 'first_name'
@@ -448,7 +448,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Delete a user
+	 * Delete a user.
 	 *
 	 * @uses wp_delete_user()
 	 * @param array $args Method parameters. Contains:
@@ -662,34 +662,30 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	/**
 	 * Create a new post for any registered post type.
 	 *
-	 *  The 'content_struct' argument can contain:
-	 *  - post_type (default: 'post')
-	 *  - post_status (default: 'draft')
-	 *  - post_title
-	 *  - post_author
-	 *  - post_exerpt
-	 *  - post_content
-	 *  - post_date_gmt | post_date
-	 *  - post_format
-	 *  - post_password
-	 *  - comment_status - can be 'open' | 'closed'
-	 *  - ping_status - can be 'open' | 'closed'
-	 *  - sticky
-	 *  - custom_fields - array, with each element containing 'key' and 'value'
-	 *  - terms - array, with taxonomy names as keys and arrays of term IDs as values
-	 *  - terms_names - array, with taxonomy names as keys and arrays of term names as values
-	 *  - enclosure
-	 *  - any other fields supported by wp_insert_post()
-	 *
 	 * @uses wp_insert_post()
-	 * @uses do_action() Calls 'xmlrpc_call' passing 'wp.newPost'
-	 * @uses apply_filters() Calls 'xmlrpc_wp_newPost_post_data' passing $post_data, $content_struct prior to calling wp_insert_post()
-	 *
 	 * @param array $args Method parameters. Contains:
-	 *  - blog_id
-	 *  - username
-	 *  - password
-	 *  - content_struct
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - array   $content_struct
+	 *      $content_struct can contain:
+	 *      - post_type (default: 'post')
+	 *      - post_status (default: 'draft')
+	 *      - post_title
+	 *      - post_author
+	 *      - post_exerpt
+	 *      - post_content
+	 *      - post_date_gmt | post_date
+	 *      - post_format
+	 *      - post_password
+	 *      - comment_status - can be 'open' | 'closed'
+	 *      - ping_status - can be 'open' | 'closed'
+	 *      - sticky
+	 *      - custom_fields - array, with each element containing 'key' and 'value'
+	 *      - terms - array, with taxonomy names as keys and arrays of term IDs as values
+	 *      - terms_names - array, with taxonomy names as keys and arrays of term names as values
+	 *      - enclosure
+	 *      - any other fields supported by wp_insert_post()
 	 * @return string post_id
 	 */
 	function wp_newPost( $args ) {
@@ -922,17 +918,18 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/*
-	 * Update a post for any registered post type.
+	 * Edit a post for any registered post type.
 	 *
-	 * @uses wp_newPost()
-	 * @uses do_action() Calls 'xmlrpc_call' passing 'wp.editPost'
+	 * The $content_struct parameter only needs to contain fields that
+	 * should be changed. All other fields will retain their existing values.
 	 *
+	 * @uses wp_insert_post()
 	 * @param array $args Method parameters. Contains:
-	 *  - blog_id
-	 *  - username
-	 *  - password
-	 *  - post_id
-	 *  - content_struct
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - int     $post_id
+	 *  - array   $content_struct
 	 * @return true on success
 	 */
 	function wp_editPost( $args ) {
@@ -979,10 +976,10 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *
 	 * @uses wp_delete_post()
 	 * @param array $args Method parameters. Contains:
-	 *  - blog_id
-	 *  - username
-	 *  - password
-	 *  - post_id
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - int     $post_id
 	 * @return true on success
 	 */
 	function wp_deletePost( $args ) {
@@ -1177,7 +1174,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Retrieve post terms
+	 * Retrieve post terms.
 	 *
 	 * The optional $group_by_taxonomy parameter specifies whether
 	 * the returned array should have terms grouped by taxonomy or
@@ -1242,7 +1239,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Set post terms
+	 * Set post terms.
 	 *
 	 * @uses wp_set_object_terms()
 	 * @param array $args Method parameters. Contains:
@@ -1311,7 +1308,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Retrieves a post type
+	 * Retrieve a post type.
 	 *
 	 * @uses get_post_type_object()
 	 * @param array $args Method parameters. Contains:
@@ -1354,7 +1351,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Retrieves a post types
+	 * Retrieve all post types.
 	 *
 	 * @uses get_post_types()
 	 * @param array $args Method parameters. Contains:
@@ -1390,14 +1387,14 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Create a new term
+	 * Create a new term.
 	 *
 	 * @uses wp_insert_term()
 	 * @param array $args Method parameters. Contains:
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
-	 *  - array   $content_struct.
+	 *  - array   $content_struct
 	 *      The $content_struct must contain:
 	 *      - 'name'
 	 *      - 'taxonomy'
@@ -1471,7 +1468,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Edit a term
+	 * Edit a term.
 	 *
 	 * @uses wp_update_term()
 	 * @param array $args Method parameters. Contains:
@@ -1479,7 +1476,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string  $username
 	 *  - string  $password
 	 *  - int     $term_id
-	 *  - array   $content_struct.
+	 *  - array   $content_struct
 	 *      The $content_struct must contain:
 	 *      - 'taxonomy'
 	 *      Also, it can optionally contain:
@@ -1565,7 +1562,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Delete a  term
+	 * Delete a term.
 	 *
 	 * @uses wp_delete_term()
 	 * @param array $args Method parameters. Contains:
@@ -1618,7 +1615,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Retrieve a term
+	 * Retrieve a term.
 	 *
 	 * @uses get_term()
 	 * @param array $args Method parameters. Contains:
@@ -1672,7 +1669,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Retrieve terms
+	 * Retrieve all terms for a taxonomy.
 	 *
 	 * @uses get_terms()
 	 * @param array $args Method parameters. Contains:
@@ -1718,7 +1715,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Retrieve a taxonomy
+	 * Retrieve a taxonomy.
 	 *
 	 * @uses get_taxonomy()
 	 * @param array $args Method parameters. Contains:
@@ -1753,7 +1750,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Retrieve taxonomies
+	 * Retrieve all taxonomies.
 	 *
 	 * @uses get_taxonomies()
 	 * @param array $args Method parameters. Contains:
