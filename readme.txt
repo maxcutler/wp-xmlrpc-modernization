@@ -16,8 +16,7 @@ and move beyond the historical Blogger/metaWeblog/MT APIs.
 It is derived from Prasath Nadarajah's GSoC '11 project to expand WordPress' web services,
 although the exposed API methods are not compatible (different parameter names/types/orders).
 
-WARNING: This plugin should not be used in production, and is intended as a testing ground
-for new methods before incorporation into WordPress core.
+WARNING: This plugin is still experimental, use in production at your own risk.
 
 = Methods =
 
@@ -26,7 +25,11 @@ for new methods before incorporation into WordPress core.
 * wp.deleteUser - delete a specfic user
 * wp.getUser - get information about a specific user
 * wp.getUsers - retrieve a list of users
-* wp.getPost  - get a specific post (from any post type)
+* wp.getUserInfo - get information about the requesting user
+* wp.newPost - create a new post (of any post type)
+* wp.editPost - edit a post (of any post type)
+* wp.deletePost - delete a post (of any post type)
+* wp.getPost  - get a specific post (of any post type)
 * wp.getPosts  - get a list of posts
 * wp.getPostType - get information about a specific post type
 * wp.getPostTypes - get a list of registered post types
@@ -41,6 +44,9 @@ for new methods before incorporation into WordPress core.
 * wp.getTerms - get a list of term associated with a taxonomy
 
 == Changelog ==
+
+= 0.7 =
+* Added wp.newPost, wp.editPost, and wp.deletePost methods.
 
 = 0.6 =
 * Revised implementations of many methods.
