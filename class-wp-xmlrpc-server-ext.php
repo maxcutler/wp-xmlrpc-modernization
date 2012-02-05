@@ -118,7 +118,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			'post_modified_gmt' => new IXR_Date( mysql2date( 'Ymd\TH:i:s', $post['post_modified_gmt'], false ) ),
 			'post_status'       => $post['post_status'],
 			'post_type'         => $post['post_type'],
-			'post_slug'         => $post['post_name'],
+			'post_name'         => $post['post_name'],
 			'post_author'       => $post['post_author'],
 			'post_password'     => $post['post_password'],
 			'post_excerpt'      => $post['post_excerpt'],
@@ -1038,7 +1038,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - 'post_modified_gmt'
 	 *  - 'post_status'
 	 *  - 'post_type'
-	 *  - 'post_slug'
+	 *  - 'post_name'
 	 *  - 'post_author'
 	 *  - 'post_password'
 	 *  - 'post_excerpt'
