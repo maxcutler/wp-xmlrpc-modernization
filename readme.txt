@@ -45,6 +45,11 @@ WARNING: This plugin is still experimental, use in production at your own risk.
 
 == Changelog ==
 
+= 0.7.1 =
+* PHP 5.2.x compatibility fix.
+* Typo corrections.
+* Alignment with WordPress core version of post methods.
+
 = 0.7 =
 * Added wp.newPost, wp.editPost, and wp.deletePost methods.
 

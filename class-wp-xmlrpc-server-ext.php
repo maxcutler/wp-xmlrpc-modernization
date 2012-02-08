@@ -101,11 +101,13 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	/**
 	 * Prepares post data for return in an XML-RPC object.
 	 *
+	 * @access private
+	 *
 	 * @param array $post The unprepared post data
 	 * @param array $fields The subset of post fields to return
 	 * @return array The prepared post data
 	 */
-	function prepare_post( $post, $fields ) {
+	function _prepare_post( $post, $fields ) {
 		// holds the data for this post. built up based on $fields
 		$_post = array( 'post_id' => $post['ID'] );
 
@@ -196,7 +198,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			}
 		}
 
-		return apply_filters( 'xmlrpc_prepare_post', $_post, $post, $fields );
+		return apply_filters( 'xmlrpc__prepare_post', $_post, $post, $fields );
 	}
 
 	/**
@@ -707,6 +709,13 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/*
+	 * Helper method for filtering out elements from an array.
+	 */
+	function _is_greater_than_one( $count ){
+		return $count > 1;
+	}
+
+	/*
 	 * Helper method for wp_newPost and wp_editPost, containing shared logic.
 	 */
 	function _wp_insertPost( $user, $content_struct ) {
@@ -767,10 +776,12 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 				unset( $post_data['ping_status'] );
 
 		// Do some timestamp voodoo
-		if ( ! empty( $post_data['post_date_gmt'] ) )
-			$dateCreated = str_replace( 'Z', '', $post_data['post_date_gmt']->getIso() ) . 'Z'; // We know this is supposed to be GMT, so we're going to slap that Z on there by force
-		elseif ( ! empty( $post_data['post_date'] ) )
+		if ( ! empty( $post_data['post_date_gmt'] ) ) {
+			// We know this is supposed to be GMT, so we're going to slap that Z on there by force
+			$dateCreated = str_replace( 'Z', '', $post_data['post_date_gmt']->getIso() ) . 'Z';
+		} elseif ( ! empty( $post_data['post_date'] ) ) {
 			$dateCreated = $post_data['post_date']->getIso();
+		}
 
 		if ( ! empty( $dateCreated ) ) {
 			$post_data['post_date'] = get_date_from_gmt( iso8601_to_datetime( $dateCreated ) );
@@ -811,7 +822,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 				// validating term ids
 				foreach ( $taxonomies as $taxonomy ) {
 					if ( ! array_key_exists( $taxonomy , $post_type_taxonomies ) )
-						return new IXR_Error( 401, __( 'Sorry, one of the given taxonomy is not supported by the post type.' ) );
+						return new IXR_Error( 401, __( 'Sorry, one of the given taxonomies is not supported by the post type.' ) );
 
 					if( ! current_user_can( $post_type_taxonomies[$taxonomy]->cap->assign_terms ) )
 						return new IXR_Error( 401, __( 'Sorry, you are not allowed to assign a term to one of the given taxonomies' ) );
@@ -834,7 +845,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 				foreach ( $taxonomies as $taxonomy ) {
 					if ( ! array_key_exists( $taxonomy , $post_type_taxonomies ) )
-						return new IXR_Error( 401, __( 'Sorry, one of the given taxonomy is not supported by the post type.' ) );
+						return new IXR_Error( 401, __( 'Sorry, one of the given taxonomies is not supported by the post type.' ) );
 
 					if( ! current_user_can( $post_type_taxonomies[$taxonomy]->cap->assign_terms ) )
 						return new IXR_Error( 401, __( 'Sorry, you are not allowed to assign a term to one of the given taxonomies.' ) );
@@ -848,9 +859,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 						$tax_term_names_count = array_count_values( $tax_term_names );
 
 						// filter out non-ambiguous term names
-						$ambiguous_tax_term_counts = array_filter( $tax_term_names_count, function( $count ){
-							return $count > 1;
-						} );
+						$ambiguous_tax_term_counts = array_filter( $tax_term_names_count, array( $this, '_is_greater_than_one' ) );
 
 						$ambiguous_terms = array_keys( $ambiguous_tax_term_counts );
 					}
@@ -858,7 +867,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 					$term_names = $post_data['terms_names'][$taxonomy];
 					foreach ( $term_names as $term_name ) {
 						if ( in_array( $term_name, $ambiguous_terms ) )
-							return new IXR_Error( 401, __( 'Ambiguous term name used in a hierarhical taxonomy. Please use term ID instead.' ) );
+							return new IXR_Error( 401, __( 'Ambiguous term name used in a hierarchical taxonomy. Please use term ID instead.' ) );
 
 						$term = get_term_by( 'name', $term_name, $taxonomy );
 
@@ -945,6 +954,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			return $this->error;
 
 		do_action( 'xmlrpc_call', 'wp.editPost' );
+
+		// User Capabilities are checked in _wp_insertPost.
 
 		$post = get_post( $post_id, ARRAY_A );
 
@@ -1080,7 +1091,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( ! current_user_can( $post_type->cap->edit_posts, $post_id ) )
 			return new IXR_Error( 401, __( 'Sorry, you cannot edit this post.' ) );
 
-		return $this->prepare_post( $post, $fields );
+		return $this->_prepare_post( $post, $fields );
 	}
 
 	/**
@@ -1167,7 +1178,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			if ( ! current_user_can( $post_type->cap->edit_posts, $post['ID'] ) )
 				continue;
 
-			$struct[] = $this->prepare_post( $post, $fields );
+			$struct[] = $this->_prepare_post( $post, $fields );
 		}
 
 		return $struct;
