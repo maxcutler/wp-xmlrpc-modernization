@@ -53,11 +53,13 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	/**
 	 * Prepares user data for return in an XML-RPC object.
 	 *
+	 * @access protected
+	 *
 	 * @param WP_User $user The unprepared user object
 	 * @param array $fields The subset of user fields to return
 	 * @return array The prepared user data
 	 */
-	function prepare_user( $user, $fields ) {
+	protected function _prepare_user( $user, $fields ) {
 		$contact_methods = _wp_get_user_contactmethods();
 
 		$user_contacts = array();
@@ -95,7 +97,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			$_user = array_merge( $_user, $requested_fields );
 		}
 
-		return apply_filters( 'xmlrpc_prepare_user', $_user, $user, $fields );
+		return apply_filters( 'xmlrpc__prepare_user', $_user, $user, $fields );
 	}
 
 	/**
@@ -252,15 +254,17 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	/**
 	 * Prepares post type data for return in an XML-RPC object.
 	 *
+	 * @access protected
+	 *
 	 * @param array|object $post_type The unprepared post type data
 	 * @return array The prepared post type data
 	 */
-	function prepare_post_type( $post_type ) {
+	protected function _prepare_post_type( $post_type ) {
 		$_post_type = (array) $post_type;
 
 		$_post_type['taxonomies'] = get_object_taxonomies( $_post_type['name'] );
 
-		return apply_filters( 'xmlrpc_prepare_post_type', $_post_type, $post_type );
+		return apply_filters( 'xmlrpc__prepare_post_type', $_post_type, $post_type );
 	}
 
 	/**
@@ -578,7 +582,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( ! ( $user_id == $user->ID || current_user_can( 'edit_users' ) ) )
 			return new IXR_Error( 401, __( 'Sorry, you cannot edit users.' ) );
 
-		$user = $this->prepare_user( $user_data, $fields );
+		$user = $this->_prepare_user( $user_data, $fields );
 
 		return $user;
 	}
@@ -643,7 +647,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 		$_users = array();
 		foreach ( $users as $user_data ) {
-			$_users[] = $this->prepare_user( get_userdata( $user_data->ID ), $fields );
+			$_users[] = $this->_prepare_user( get_userdata( $user_data->ID ), $fields );
 		}
 
 		return $_users;
@@ -678,7 +682,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		do_action( 'xmlrpc_call', 'wp.getUserInfo' );
 
 		$user_data = get_userdata( $user->ID );
-		$user = $this->prepare_user( $user_data, $fields );
+		$user = $this->_prepare_user( $user_data, $fields );
 
 		return $user;
 	}
@@ -1402,7 +1406,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( ! current_user_can( $post_type->cap->edit_posts ) )
 			return new IXR_Error( 401, __( 'Sorry, you are not allowed to edit this post type.' ) );
 
-		return $this->prepare_post_type( $post_type );
+		return $this->_prepare_post_type( $post_type );
 	}
 
 	/**
@@ -1435,7 +1439,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			if ( ! current_user_can( $post_type->cap->edit_posts ) )
 				continue;
 
-			$struct[] = $this->prepare_post_type( $post_type );
+			$struct[] = $this->_prepare_post_type( $post_type );
 		}
 
 		return $struct;
