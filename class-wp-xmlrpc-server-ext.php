@@ -73,7 +73,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			'username'          => $user->user_login,
 			'first_name'        => $user->user_firstname,
 			'last_name'         => $user->user_lastname,
-			'registered'        => new IXR_Date( mysql2date( 'Ymd\TH:i:s', $user->user_registered, false ) ),
+			'registered'        => $this->_convert_date( $user->user_registered ),
 			'bio'               => $user->user_description,
 			'email'             => $user->user_email,
 			'nickname'          => $user->nickname,
