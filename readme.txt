@@ -45,6 +45,12 @@ WARNING: This plugin is still experimental, use in production at your own risk.
 
 == Changelog ==
 
+= 0.7.5 =
+* Alignment with WordPress core progress on post and taxonomy methods.
+* Added `filter` parameter to wp.getTerms.
+* Added `featured_image` field support for post methods.
+* Fixed date-related bugs for draft posts.
+
 = 0.7.1 =
 * PHP 5.2.x compatibility fix.
 * Typo corrections.
