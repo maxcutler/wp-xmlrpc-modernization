@@ -51,6 +51,18 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		return array_merge( $new_methods, $methods );
 	}
 
+	function __call( $method, $args ) {
+		// depending on the version of WordPress, some methods in this class are already defined
+		// by the parent class. to avoid overriding the core versions, all methods in this class are
+		// namespaced. however, if the parent class is missing some methods, we intercept the call
+		// here and instead pass to the namespaced plugin version.
+		$wxm_method = 'wxm_' . ltrim( $method, "_" );
+		if ( method_exists( $this, $wxm_method ) )
+			return call_user_func_array( array( $this, $wxm_method ), $args );
+
+		throw new Exception ( 'Call to undefined class method: ' . $method );
+	}
+
 	/**
 	 * Checks if the method received at least the minimum number of arguments.
 	 *
@@ -58,7 +70,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @param int $count Minimum number of arguments.
 	 * @return boolean if $args contains at least $count arguments.
 	 */
-	protected function minimum_args( $args, $count ) {
+	protected function wxm_minimum_args( $args, $count ) {
 		if ( count( $args ) < $count ) {
 			$this->error = new IXR_Error( 400, __( 'Insufficient arguments passed to this XML-RPC method.' ) );
 			return false;
@@ -76,7 +88,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @param array $fields The subset of user fields to return
 	 * @return array The prepared user data
 	 */
-	protected function _prepare_user( $user, $fields ) {
+	protected function wxm_prepare_user( $user, $fields ) {
 		$contact_methods = _wp_get_user_contactmethods();
 
 		$user_contacts = array();
@@ -125,7 +137,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @param $date
 	 * @return IXR_Date
 	 */
-	protected function _convert_date( $date ) {
+	protected function wxm_convert_date( $date ) {
 		if ( $date === '0000-00-00 00:00:00' ) {
 			return new IXR_Date( '00000000T00:00:00Z' );
 		}
@@ -140,7 +152,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @param $date
 	 * @return IXR_Date
 	 */
-	protected function _convert_date_gmt( $date_gmt, $date ) {
+	protected function wxm_convert_date_gmt( $date_gmt, $date ) {
 		if ( $date !== '0000-00-00 00:00:00' && $date_gmt === '0000-00-00 00:00:00' ) {
 			return new IXR_Date( get_gmt_from_date( mysql2date( 'Y-m-d H:i:s', $date, false ), 'Ymd\TH:i:s' ) );
 		}
@@ -156,7 +168,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @param array $fields The subset of post type fields to return
 	 * @return array The prepared post data
 	 */
-	protected function _prepare_post( $post, $fields ) {
+	protected function wxm_prepare_post( $post, $fields ) {
 		// holds the data for this post. built up based on $fields
 		$_post = array( 'post_id' => strval( $post['ID'] ) );
 
@@ -242,7 +254,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @param array $fields The subset of taxonomy fields to return
 	 * @return array The prepared taxonomy data
 	 */
-	protected function _prepare_taxonomy( $taxonomy, $fields ) {
+	protected function wxm_prepare_taxonomy( $taxonomy, $fields ) {
 		$_taxonomy = array(
 			'name' => $taxonomy->name,
 			'label' => $taxonomy->label,
@@ -272,7 +284,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @param array|object $term The unprepared term data
 	 * @return array The prepared term data
 	 */
-	protected function _prepare_term( $term ) {
+	protected function wxm_prepare_term( $term ) {
 		$_term = $term;
 		if ( ! is_array( $_term) )
 			$_term = get_object_vars( $_term );
@@ -295,7 +307,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @param string $post_type The post type
 	 * @return array
 	 */
-	private function _get_all_post_type_supports( $post_type ) {
+	private function wxm_get_all_post_type_supports( $post_type ) {
 		if ( function_exists( 'get_all_post_type_supports' ) )
 			return get_all_post_type_supports( $post_type );
 
@@ -316,7 +328,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @param array $fields The subset of post fields to return
 	 * @return array The prepared post type data
 	 */
-	protected function _prepare_post_type( $post_type, $fields ) {
+	protected function wxm_prepare_post_type( $post_type, $fields ) {
 		$_post_type = array(
 			'name' => $post_type->name,
 			'label' => $post_type->label,
@@ -325,7 +337,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			'show_ui' => (bool) $post_type->show_ui,
 			'_builtin' => (bool) $post_type->_builtin,
 			'has_archive' => (bool) $post_type->has_archive,
-			'supports' => $this->_get_all_post_type_supports( $post_type->name ),
+			'supports' => $this->wxm_get_all_post_type_supports( $post_type->name ),
 		);
 
 		if ( in_array( 'labels', $fields ) ) {
@@ -358,7 +370,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @param string $thumbnail_size The image size to use for the thumbnail URL
 	 * @return array The prepared media item data
 	 */
-	protected function _prepare_media_item( $media_item, $thumbnail_size='thumbnail' ) {
+	protected function wxm_prepare_media_item( $media_item, $thumbnail_size='thumbnail' ) {
 		$_media_item = array(
 			'attachment_id'    => strval( $media_item->ID ),
 			'date_created_gmt' => $this->_convert_date_gmt( $media_item->post_date_gmt, $media_item->post_date ),
@@ -400,7 +412,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - boolean $send_mail optional. Defaults to false
 	 * @return int user_id
 	 */
-	function wp_newUser( $args ) {
+	function wxm_wp_newUser( $args ) {
 		$this->escape( $args );
 
 		$blog_id        = (int) $args[0];
@@ -494,7 +506,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - boolean $send_mail optional. Defaults to false
 	 * @return bool True, on success.
 	 */
-	function wp_editUser( $args ) {
+	function wxm_wp_editUser( $args ) {
 		$this->escape( $args );
 
 		$blog_id        = (int) $args[0];
@@ -598,7 +610,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - int     $user_id
 	 * @return True when user is deleted.
 	 */
-	function wp_deleteUser( $args ) {
+	function wxm_wp_deleteUser( $args ) {
 		$this->escape( $args );
 
 		$blog_id    = (int) $args[0];
@@ -668,7 +680,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - 'user_level'
 	 *  - 'user_contacts'
 	 */
-	function wp_getUser( $args ) {
+	function wxm_wp_getUser( $args ) {
 		$this->escape( $args );
 
 		$blog_id    = (int) $args[0];
@@ -719,7 +731,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - array   $fields optional
 	 * @return array users data
 	 */
-	function wp_getUsers( $args ) {
+	function wxm_wp_getUsers( $args ) {
 		$this->escape( $args );
 
 		$blog_id    = (int) $args[0];
@@ -776,7 +788,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - array   $fields optional
 	 * @return array (@see wp_getUser)
 	 */
-	function wp_getUserInfo( $args ) {
+	function wxm_wp_getUserInfo( $args ) {
 		$this->escape( $args );
 
 		$blog_id    = (int) $args[0];
@@ -829,7 +841,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *      - any other fields supported by wp_insert_post()
 	 * @return string post_id
 	 */
-	function wp_newPost( $args ) {
+	function wxm_wp_newPost( $args ) {
 		if ( ! $this->minimum_args( $args, 4 ) )
 			return $this->error;
 
@@ -853,14 +865,14 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	/*
 	 * Helper method for filtering out elements from an array.
 	 */
-	function _is_greater_than_one( $count ) {
+	function wxm_is_greater_than_one( $count ) {
 		return $count > 1;
 	}
 
 	/*
 	 * Helper method for wp_newPost and wp_editPost, containing shared logic.
 	 */
-	protected function _insert_post( $user, $content_struct ) {
+	protected function wxm_insert_post( $user, $content_struct ) {
 		$defaults = array( 'post_status' => 'draft', 'post_type' => 'post', 'post_author' => 0,
 			'post_password' => '', 'post_excerpt' => '', 'post_content' => '', 'post_title' => '' );
 
@@ -1100,7 +1112,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - array   $content_struct
 	 * @return true on success
 	 */
-	function wp_editPost( $args ) {
+	function wxm_wp_editPost( $args ) {
 		if ( ! $this->minimum_args( $args, 5 ) )
 			return $this->error;
 
@@ -1153,7 +1165,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - int     $post_id
 	 * @return true on success
 	 */
-	function wp_deletePost( $args ) {
+	function wxm_wp_deletePost( $args ) {
 		if ( ! $this->minimum_args( $args, 4 ) )
 			return $this->error;
 
@@ -1227,7 +1239,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - 'tags'
 	 *  - 'enclosure'
 	 */
-	function wp_getPost( $args ) {
+	function wxm_wp_getPost( $args ) {
 		if ( ! $this->minimum_args( $args, 4 ) )
 			return $this->error;
 
@@ -1282,7 +1294,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - array   $fields optional
 	 * @return array contains a collection of posts.
 	 */
-	function wp_getPosts( $args ) {
+	function wxm_wp_getPosts( $args ) {
 		if ( ! $this->minimum_args( $args, 3 ) )
 			return $this->error;
 
@@ -1372,7 +1384,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - 'taxonomies'
 	 *  - 'supports'
 	 */
-	function wp_getPostType( $args ) {
+	function wxm_wp_getPostType( $args ) {
 		if ( ! $this->minimum_args( $args, 4 ) )
 			return $this->error;
 
@@ -1416,7 +1428,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - array   $fields
 	 * @return array
 	 */
-	function wp_getPostTypes( $args ) {
+	function wxm_wp_getPostTypes( $args ) {
 		if ( ! $this->minimum_args( $args, 3 ) )
 			return $this->error;
 
@@ -1469,7 +1481,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *      - 'slug'
 	 * @return string term_id
 	 */
-	function wp_newTerm( $args ) {
+	function wxm_wp_newTerm( $args ) {
 		if ( ! $this->minimum_args( $args, 4 ) )
 			return $this->error;
 
@@ -1554,7 +1566,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *      - 'slug'
 	 * @return bool True, on success.
 	 */
-	function wp_editTerm( $args ) {
+	function wxm_wp_editTerm( $args ) {
 		if ( ! $this->minimum_args( $args, 5 ) )
 			return $this->error;
 
@@ -1644,7 +1656,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string     $term_id
 	 * @return boolean|IXR_Error If it suceeded true else a reason why not
 	 */
-	function wp_deleteTerm( $args ) {
+	function wxm_wp_deleteTerm( $args ) {
 		if ( ! $this->minimum_args( $args, 5 ) )
 			return $this->error;
 
@@ -1709,7 +1721,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - 'parent'
 	 *  - 'count'
 	 */
-	function wp_getTerm( $args ) {
+	function wxm_wp_getTerm( $args ) {
 		if ( ! $this->minimum_args( $args, 5 ) )
 			return $this->error;
 
@@ -1760,7 +1772,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - array   $filter optional
 	 * @return array terms
 	 */
-	function wp_getTerms( $args ) {
+	function wxm_wp_getTerms( $args ) {
 		if ( ! $this->minimum_args( $args, 4 ) )
 			return $this->error;
 
@@ -1833,7 +1845,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string  $taxonomy
 	 * @return array (@see get_taxonomy())
 	 */
-	function wp_getTaxonomy( $args ) {
+	function wxm_wp_getTaxonomy( $args ) {
 		if ( ! $this->minimum_args( $args, 4 ) )
 			return $this->error;
 
@@ -1875,7 +1887,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string  $password
 	 * @return array taxonomies
 	 */
-	function wp_getTaxonomies( $args ) {
+	function wxm_wp_getTaxonomies( $args ) {
 		if ( ! $this->minimum_args( $args, 3 ) )
 			return $this->error;
 
