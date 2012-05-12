@@ -130,7 +130,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			$_user = array_merge( $_user, $requested_fields );
 		}
 
-		return apply_filters( 'xmlrpc__prepare_user', $_user, $user, $fields );
+		return apply_filters( 'xmlrpc_prepare_user', $_user, $user, $fields );
 	}
 
 	/**
@@ -417,6 +417,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @return int user_id
 	 */
 	function wxm_wp_newUser( $args ) {
+		if ( ! $this->minimum_args( $args, 4 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id        = (int) $args[0];
@@ -511,6 +514,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @return bool True, on success.
 	 */
 	function wxm_wp_editUser( $args ) {
+		if ( ! $this->minimum_args( $args, 5 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id        = (int) $args[0];
@@ -615,6 +621,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @return True when user is deleted.
 	 */
 	function wxm_wp_deleteUser( $args ) {
+		if ( ! $this->minimum_args( $args, 4 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id    = (int) $args[0];
@@ -685,6 +694,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - 'user_contacts'
 	 */
 	function wxm_wp_getUser( $args ) {
+		if ( ! $this->minimum_args( $args, 4 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id    = (int) $args[0];
@@ -736,6 +748,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @return array users data
 	 */
 	function wxm_wp_getUsers( $args ) {
+		if ( ! $this->minimum_args( $args, 3 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id    = (int) $args[0];
@@ -793,6 +808,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @return array (@see wp_getUser)
 	 */
 	function wxm_wp_getUserInfo( $args ) {
+		if ( ! $this->minimum_args( $args, 3 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id    = (int) $args[0];
