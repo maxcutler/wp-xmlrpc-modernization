@@ -4,21 +4,23 @@ Tags: xmlrpc, xml-rpc, api
 Requires at least: 3.3
 Tested up to: 3.4
 Stable tag: trunk
+License: GPLv2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
 This plugin updates the WordPress XML-RPC API to leverage the latest features of WordPress
 and move beyond the historical Blogger/metaWeblog/MT APIs.
 
 == Description ==
 
-This plugin updates the WordPress XML-RPC API to leverage the latest features of WordPress
-and move beyond the historical Blogger/metaWeblog/MT APIs.
+This plugin brings XML-RPC API enhancements from the WordPress 3.4 release to previous versions
+of WordPress (3.3 and earlier). It also adds new user management methods.
 
 It is derived from Prasath Nadarajah's GSoC '11 project to expand WordPress' web services,
 although the exposed API methods are not compatible (different parameter names/types/orders).
 
-WARNING: This plugin is still experimental, use in production at your own risk.
-
 = Methods =
+
+New Methods:
 
 * wp.newUser - create a new user
 * wp.editUser - edit user information
@@ -26,6 +28,9 @@ WARNING: This plugin is still experimental, use in production at your own risk.
 * wp.getUser - get information about a specific user
 * wp.getUsers - retrieve a list of users
 * wp.getUserInfo - get information about the requesting user
+
+3.4 Methods for pre-3.4 sites:
+
 * wp.newPost - create a new post (of any post type)
 * wp.editPost - edit a post (of any post type)
 * wp.deletePost - delete a post (of any post type)
@@ -42,6 +47,14 @@ WARNING: This plugin is still experimental, use in production at your own risk.
 * wp.getTerms - get a list of term associated with a taxonomy
 
 == Changelog ==
+
+= 0.8 =
+* Alignment with WordPress core progress (RC1).
+* Removed wp.getPostTerms and wp.setPostTerms.
+* Added 'id' to wp.uploadFile return value.
+* Added new options for wp.getOptions and wp.setOptions to match 3.4 core.
+* Added minimum argument count guards to users methods.
+* Added additional fields to wp.newUser and wp.editUser.
 
 = 0.7.5 =
 * Alignment with WordPress core progress on post and taxonomy methods.
