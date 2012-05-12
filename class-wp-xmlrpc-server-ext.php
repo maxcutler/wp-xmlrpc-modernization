@@ -8,7 +8,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 	function __construct() {
 		// hook filter to add the new methods after the existing ones are added in the parent constructor
-		add_filter( 'xmlrpc_methods' , array( &$this, 'xmlrpc_methods' ) );
+		add_filter( 'xmlrpc_methods' , array( &$this, 'wxm_xmlrpc_methods' ) );
 
 		// patch wp.uploadFile to return ID
 		add_filter( 'wp_handle_upload', array( &$this, 'wxm_handle_upload' ) );
@@ -19,7 +19,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		parent::__construct();
 	}
 
-	function xmlrpc_methods( $methods ) {
+	function wxm_xmlrpc_methods( $methods ) {
 		$new_methods = array();
 
 		// user management
