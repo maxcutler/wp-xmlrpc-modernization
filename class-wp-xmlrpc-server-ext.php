@@ -412,7 +412,11 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *      - 'role'
 	 *      - 'first_name'
 	 *      - 'last_name'
-	 *      - 'website'
+	 *      - 'url'
+	 *      - 'display_name'
+	 *      - 'nickname'
+	 *      - 'nicename'
+	 *      - 'bio'
 	 *  - boolean $send_mail optional. Defaults to false
 	 * @return int user_id
 	 */
@@ -474,13 +478,25 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( isset( $content_struct['url'] ) )
 			$user_data['user_url'] = $content_struct['url'];
 
+		if ( isset( $content_struct['display_name'] ) )
+			$user_data['display_name'] = $content_struct['display_name'];
+
+		if ( isset( $content_struct['nickname'] ) )
+			$user_data['nickname'] = $content_struct['nickname'];
+
+		if ( isset( $content_struct['nicename'] ) )
+			$user_data['user_nicename'] = $content_struct['nicename'];
+
+		if ( isset( $content_struct['bio'] ) )
+			$user_data['description'] = $content_struct['bio'];
+
 		$user_id = wp_insert_user( $user_data );
 
 		if ( is_wp_error( $user_id ) )
 			return new IXR_Error( 500, $user_id->get_error_message() );
 
 		if ( ! $user_id )
-			return new IXR_Error( 500, __( 'Sorry, the new user failed.' ) );
+			return new IXR_Error( 500, __( 'Sorry, the new user creation failed.' ) );
 
 		if ( $send_mail ) {
 			wp_new_user_notification( $user_id, $user_data['user_pass'] );
@@ -505,6 +521,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *      - 'last_name'
 	 *      - 'website'
 	 *      - 'role'
+	 *      - 'display_name'
 	 *      - 'nickname'
 	 *      - 'nicename'
 	 *      - 'bio'
@@ -576,6 +593,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( isset( $content_struct['website'] ) )
 			$user_data['user_url'] = $content_struct['url'];
 
+		if ( isset( $content_struct['display_name'] ) )
+			$user_data['display_name'] = $content_struct['display_name'];
+
 		if ( isset( $content_struct['nickname'] ) )
 			$user_data['nickname'] = $content_struct['nickname'];
 
@@ -604,7 +624,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			return new IXR_Error( 500, $result->get_error_message() );
 
 		if ( ! $result )
-			return new IXR_Error( 500, __( 'Sorry, the user cannot be updated. Something wrong happened.' ) );
+			return new IXR_Error( 500, __( 'Sorry, the user cannot be updated.' ) );
 
 		return true;
 	}
