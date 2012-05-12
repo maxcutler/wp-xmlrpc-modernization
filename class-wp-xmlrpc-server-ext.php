@@ -10,6 +10,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		// hook filter to add the new methods after the existing ones are added in the parent constructor
 		add_filter( 'xmlrpc_methods' , array( &$this, 'xmlrpc_methods' ) );
 
+		// patch wp.uploadFile to return ID
+		add_filter( 'wp_handle_upload', array( &$this, 'wxm_handle_upload' ) );
+
 		parent::__construct();
 	}
 
@@ -1919,6 +1922,12 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			$struct[] = $this->_prepare_taxonomy( $taxonomy, $fields );
 		}
 
+		return $struct;
+	}
+
+	function wxm_handle_upload( $struct ) {
+		$attachment_id = url_to_postid( $struct['url'] );
+		$struct['id'] = $attachment_id;
 		return $struct;
 	}
 }
