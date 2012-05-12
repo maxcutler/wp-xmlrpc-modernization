@@ -13,6 +13,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		// patch wp.uploadFile to return ID
 		add_filter( 'wp_handle_upload', array( &$this, 'wxm_handle_upload' ) );
 
+		// add new options
+		add_filter( 'xmlrpc_blog_options', array( &$this, 'wxm_blog_options' ) );
+
 		parent::__construct();
 	}
 
@@ -1929,6 +1932,56 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$attachment_id = url_to_postid( $struct['url'] );
 		$struct['id'] = $attachment_id;
 		return $struct;
+	}
+
+	function wxm_blog_options( $options ) {
+		$wp34_options = array(
+			// Read only options
+			'image_default_link_type' => array(
+				'desc'          => __( 'Image default link type' ),
+				'readonly'      => true,
+				'option'        => 'image_default_link_type'
+			),
+			'image_default_size' => array(
+				'desc'          => __( 'Image default size' ),
+				'readonly'      => true,
+				'option'        => 'image_default_size'
+			),
+			'image_default_align' => array(
+				'desc'          => __( 'Image default align' ),
+				'readonly'      => true,
+				'option'        => 'image_default_align'
+			),
+			'template'          => array(
+				'desc'          => __( 'Template' ),
+				'readonly'      => true,
+				'option'        => 'template'
+			),
+			'stylesheet'        => array(
+				'desc'          => __( 'Stylesheet' ),
+				'readonly'      => true,
+				'option'        => 'stylesheet'
+			),
+			'post_thumbnail'    => array(
+				'desc'          => __('Post Thumbnail'),
+				'readonly'      => true,
+				'value'         => current_theme_supports( 'post-thumbnails' )
+			),
+
+			// Updatable options
+			'default_comment_status' => array(
+				'desc'          => __( 'Allow people to post comments on new articles' ),
+				'readonly'      => false,
+				'option'        => 'default_comment_status'
+			),
+			'default_ping_status' => array(
+				'desc'          => __( 'Allow link notifications from other blogs (pingbacks and trackbacks)' ),
+				'readonly'      => false,
+				'option'        => 'default_ping_status'
+			)
+		);
+
+		return array_merge( $wp34_options, $options );
 	}
 }
 
