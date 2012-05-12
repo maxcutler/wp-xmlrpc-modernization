@@ -33,8 +33,6 @@ WARNING: This plugin is still experimental, use in production at your own risk.
 * wp.getPosts  - get a list of posts
 * wp.getPostType - get information about a specific post type
 * wp.getPostTypes - get a list of registered post types
-* wp.getPostTerms - get terms associated with a post
-* wp.setPostTerms - set terms associated with a post
 * wp.getTaxonomy - get information about a specific taxonomy
 * wp.getTaxonomies  - get a list of registered taxonomies
 * wp.newTerm  - create a new term in a taxonomy

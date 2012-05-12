@@ -30,8 +30,6 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$new_methods['wp.deletePost']       = array( &$this, 'wp_deletePost' );
 		$new_methods['wp.getPost']          = array( &$this, 'wp_getPost' );
 		$new_methods['wp.getPosts']         = array( &$this, 'wp_getPosts' );
-		$new_methods['wp.getPostTerms']     = array( &$this, 'wp_getPostTerms' );
-		$new_methods['wp.setPostTerms']     = array( &$this, 'wp_setPostTerms' );
 		$new_methods['wp.getPostType']      = array( &$this, 'wp_getPostType' );
 		$new_methods['wp.getPostTypes']     = array( &$this, 'wp_getPostTypes' );
 
