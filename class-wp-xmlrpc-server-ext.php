@@ -2,6 +2,7 @@
 
 include_once( ABSPATH . WPINC . '/class-IXR.php' );
 include_once( ABSPATH . WPINC . '/class-wp-xmlrpc-server.php' );
+include_once( ABSPATH . WPINC . '/post-thumbnail-template.php' );
 
 class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
@@ -48,6 +49,22 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		// (i.e., plugin will be forward-compatible with future releases of WordPress
 		//  that include these methods built-in)
 		return array_merge( $new_methods, $methods );
+	}
+
+	/**
+	 * Checks if the method received at least the minimum number of arguments.
+	 *
+	 * @param string|array $args Sanitize single string or array of strings.
+	 * @param int $count Minimum number of arguments.
+	 * @return boolean if $args contains at least $count arguments.
+	 */
+	protected function minimum_args( $args, $count ) {
+		if ( count( $args ) < $count ) {
+			$this->error = new IXR_Error( 400, __( 'Insufficient arguments passed to this XML-RPC method.' ) );
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
@@ -116,12 +133,27 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
+	 * Convert a WordPress gmt date string to an IXR_Date object.
+	 *
+	 * @access protected
+	 *
+	 * @param $date
+	 * @return IXR_Date
+	 */
+	protected function _convert_date_gmt( $date_gmt, $date ) {
+		if ( $date !== '0000-00-00 00:00:00' && $date_gmt === '0000-00-00 00:00:00' ) {
+			return new IXR_Date( get_gmt_from_date( mysql2date( 'Y-m-d H:i:s', $date, false ), 'Ymd\TH:i:s' ) );
+		}
+		return $this->_convert_date( $date_gmt );
+	}
+
+	/**
 	 * Prepares post data for return in an XML-RPC object.
 	 *
 	 * @access protected
 	 *
 	 * @param array $post The unprepared post data
-	 * @param array $fields The subset of post fields to return
+	 * @param array $fields The subset of post type fields to return
 	 * @return array The prepared post data
 	 */
 	protected function _prepare_post( $post, $fields ) {
@@ -132,9 +164,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$post_fields = array(
 			'post_title'        => $post['post_title'],
 			'post_date'         => $this->_convert_date( $post['post_date'] ),
-			'post_date_gmt'     => $this->_convert_date( $post['post_date_gmt'] ),
+			'post_date_gmt'     => $this->_convert_date_gmt( $post['post_date_gmt'], $post['post_date'] ),
 			'post_modified'     => $this->_convert_date( $post['post_modified'] ),
-			'post_modified_gmt' => $this->_convert_date( $post['post_modified_gmt'] ),
+			'post_modified_gmt' => $this->_convert_date_gmt( $post['post_modified_gmt'], $post['post_modified'] ),
 			'post_status'       => $post['post_status'],
 			'post_type'         => $post['post_type'],
 			'post_name'         => $post['post_name'],
@@ -146,8 +178,15 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			'comment_status'    => $post['comment_status'],
 			'ping_status'       => $post['ping_status'],
 			'sticky'            => ( $post['post_type'] === 'post' && is_sticky( $post['ID'] ) ),
-			'featured_image'    => get_post_meta( $post['ID'], '_thumbnail_id', true ),
 		);
+
+		// Thumbnail
+		$post_fields['post_thumbnail'] = array();
+		$thumbnail_id = get_post_thumbnail_id( $post['ID'] );
+		if ( $thumbnail_id ) {
+			$thumbnail_size = current_theme_supports('post-thumbnail') ? 'post-thumbnail' : 'thumbnail';
+			$post_fields['post_thumbnail'] = $this->_prepare_media_item( get_post( $thumbnail_id ), $thumbnail_size );
+		}
 
 		// Consider future posts as published
 		if ( $post_fields['post_status'] === 'future' )
@@ -177,31 +216,6 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			}
 		}
 
-		// backward compatiblity
-		if ( $all_taxonomy_fields || in_array( 'tags', $fields ) ) {
-			$tagnames = array();
-			$tags = wp_get_post_tags( $post['ID'] );
-			if ( ! empty( $tags ) ) {
-				foreach ( $tags as $tag ) {
-					$tagnames[] = $tag->name;
-				}
-				$tagnames = implode( ', ', $tagnames );
-			} else {
-				$tagnames = '';
-			}
-			$_post['tags'] = $tagnames;
-		}
-
-		// backward compatiblity
-		if ( $all_taxonomy_fields || in_array( 'categories', $fields ) ) {
-			$categories = array();
-			$catids = wp_get_post_categories( $post['ID'] );
-			foreach ( $catids as $catid ) {
-				$categories[] = get_cat_name( $catid );
-			}
-			$_post['categories'] = $categories;
-		}
-
 		if ( in_array( 'custom_fields', $fields ) )
 			$_post['custom_fields'] = $this->get_custom_fields( $post['ID'] );
 
@@ -216,30 +230,45 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			}
 		}
 
-		return apply_filters( 'xmlrpc__prepare_post', $_post, $post, $fields );
+		return apply_filters( 'xmlrpc_prepare_post', $_post, $post, $fields );
 	}
 
 	/**
 	 * Prepares taxonomy data for return in an XML-RPC object.
 	 *
 	 * @access protected
-	.*
-	 * @param array|object $taxonomy The unprepared taxonomy data
+	 *
+	 * @param object $taxonomy The unprepared taxonomy data
+	 * @param array $fields The subset of taxonomy fields to return
 	 * @return array The prepared taxonomy data
 	 */
-	protected function _prepare_taxonomy( $taxonomy ) {
-		$_taxonomy = (array) $taxonomy;
+	protected function _prepare_taxonomy( $taxonomy, $fields ) {
+		$_taxonomy = array(
+			'name' => $taxonomy->name,
+			'label' => $taxonomy->label,
+			'hierarchical' => (bool) $taxonomy->hierarchical,
+			'public' => (bool) $taxonomy->public,
+			'show_ui' => (bool) $taxonomy->show_ui,
+			'_builtin' => (bool) $taxonomy->_builtin,
+		);
 
-		unset( $_taxonomy['update_count_callback'] );
+		if ( in_array( 'labels', $fields ) )
+			$_taxonomy['labels'] = (array) $taxonomy->labels;
 
-		return apply_filters( 'xmlrpc__prepare_taxonomy', $_taxonomy, $taxonomy );
+		if ( in_array( 'cap', $fields ) )
+			$_taxonomy['cap'] = (array) $taxonomy->cap;
+
+		if ( in_array( 'object_type', $fields ) )
+			$_taxonomy['object_type'] = array_unique( (array) $taxonomy->object_type );
+
+		return apply_filters( 'xmlrpc_prepare_taxonomy', $_taxonomy, $taxonomy, $fields );
 	}
 
 	/**
 	 * Prepares term data for return in an XML-RPC object.
 	 *
 	 * @access protected
-	.*
+	 *
 	 * @param array|object $term The unprepared term data
 	 * @return array The prepared term data
 	 */
@@ -248,23 +277,106 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( ! is_array( $_term) )
 			$_term = get_object_vars( $_term );
 
-		return apply_filters( 'xmlrpc__prepare_term', $_term, $term );
+		// For Intergers which may be largeer than XMLRPC supports ensure we return strings.
+		$_term['term_id'] = strval( $_term['term_id'] );
+		$_term['term_group'] = strval( $_term['term_group'] );
+		$_term['term_taxonomy_id'] = strval( $_term['term_taxonomy_id'] );
+		$_term['parent'] = strval( $_term['parent'] );
+
+		// Count we are happy to return as an Integer because people really shouldn't use Terms that much.
+		$_term['count'] = intval( $_term['count'] );
+
+		return apply_filters( 'xmlrpc_prepare_term', $_term, $term );
 	}
 
 	/**
-	 * Prepares post type data for return in an XML-RPC object.
+	 * Get all the post type features
+	 *
+	 * @param string $post_type The post type
+	 * @return array
+	 */
+	private function _get_all_post_type_supports( $post_type ) {
+		if ( function_exists( 'get_all_post_type_supports' ) )
+			return get_all_post_type_supports( $post_type );
+
+		global $_wp_post_type_features;
+
+		if ( isset( $_wp_post_type_features[$post_type] ) )
+			return $_wp_post_type_features[$post_type];
+
+		return array();
+	}
+
+	/**
+	 * Prepares post data for return in an XML-RPC object.
 	 *
 	 * @access protected
 	 *
-	 * @param array|object $post_type The unprepared post type data
+	 * @param object $post_type Post type object
+	 * @param array $fields The subset of post fields to return
 	 * @return array The prepared post type data
 	 */
-	protected function _prepare_post_type( $post_type ) {
-		$_post_type = (array) $post_type;
+	protected function _prepare_post_type( $post_type, $fields ) {
+		$_post_type = array(
+			'name' => $post_type->name,
+			'label' => $post_type->label,
+			'hierarchical' => (bool) $post_type->hierarchical,
+			'public' => (bool) $post_type->public,
+			'show_ui' => (bool) $post_type->show_ui,
+			'_builtin' => (bool) $post_type->_builtin,
+			'has_archive' => (bool) $post_type->has_archive,
+			'supports' => $this->_get_all_post_type_supports( $post_type->name ),
+		);
 
-		$_post_type['taxonomies'] = get_object_taxonomies( $_post_type['name'] );
+		if ( in_array( 'labels', $fields ) ) {
+			$_post_type['labels'] = (array) $post_type->labels;
+		}
 
-		return apply_filters( 'xmlrpc__prepare_post_type', $_post_type, $post_type );
+		if ( in_array( 'cap', $fields ) ) {
+			$_post_type['cap'] = (array) $post_type->cap;
+			$_post_type['map_meta_cap'] = (bool) $post_type->map_meta_cap;
+		}
+
+		if ( in_array( 'menu', $fields ) ) {
+			$_post_type['menu_position'] = (int) $post_type->menu_position;
+			$_post_type['menu_icon'] = $post_type->menu_icon;
+			$_post_type['show_in_menu'] = (bool) $post_type->show_in_menu;
+		}
+
+		if ( in_array( 'taxonomies', $fields ) )
+			$_post_type['taxonomies'] = get_object_taxonomies( $post_type->name, 'names' );
+
+		return apply_filters( 'xmlrpc_prepare_post_type', $_post_type, $post_type );
+	}
+
+	/**
+	 * Prepares media item data for return in an XML-RPC object.
+	 *
+	 * @access protected
+	 *
+	 * @param object $media_item The unprepared media item data
+	 * @param string $thumbnail_size The image size to use for the thumbnail URL
+	 * @return array The prepared media item data
+	 */
+	protected function _prepare_media_item( $media_item, $thumbnail_size='thumbnail' ) {
+		$_media_item = array(
+			'attachment_id'    => strval( $media_item->ID ),
+			'date_created_gmt' => $this->_convert_date_gmt( $media_item->post_date_gmt, $media_item->post_date ),
+			'parent'           => $media_item->post_parent,
+			'link'             => wp_get_attachment_url( $media_item->ID ),
+			'title'            => $media_item->post_title,
+			'caption'          => $media_item->post_excerpt,
+			'description'      => $media_item->post_content,
+			'metadata'         => wp_get_attachment_metadata( $media_item->ID ),
+		);
+
+		$thumbnail_src = image_downsize( $media_item->ID, $thumbnail_size );
+		if ( $thumbnail_src )
+			$_media_item['thumbnail'] = $thumbnail_src[0];
+		else
+			$_media_item['thumbnail'] = $_media_item['link'];
+
+		return apply_filters( 'xmlrpc_prepare_media_item', $_media_item, $media_item, $thumbnail_size );
 	}
 
 	/**
@@ -709,7 +821,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *      - comment_status - can be 'open' | 'closed'
 	 *      - ping_status - can be 'open' | 'closed'
 	 *      - sticky
-	 *      - featured_image - ID of a media item to use as the featured image
+	 *      - post_thumbnail - ID of a media item to use as the post thumbnail/featured image
 	 *      - custom_fields - array, with each element containing 'key' and 'value'
 	 *      - terms - array, with taxonomy names as keys and arrays of term IDs as values
 	 *      - terms_names - array, with taxonomy names as keys and arrays of term names as values
@@ -718,6 +830,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @return string post_id
 	 */
 	function wp_newPost( $args ) {
+		if ( ! $this->minimum_args( $args, 4 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id        = (int) $args[0];
@@ -738,30 +853,32 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	/*
 	 * Helper method for filtering out elements from an array.
 	 */
-	function _is_greater_than_one( $count ){
+	function _is_greater_than_one( $count ) {
 		return $count > 1;
 	}
 
 	/*
 	 * Helper method for wp_newPost and wp_editPost, containing shared logic.
 	 */
-	function _insert_post( $user, $content_struct ) {
+	protected function _insert_post( $user, $content_struct ) {
 		$defaults = array( 'post_status' => 'draft', 'post_type' => 'post', 'post_author' => 0,
-			'post_password' => '', 'post_excerpt' => '', 'post_content' => '', 'post_title' => '', 'sticky' => 0 );
+			'post_password' => '', 'post_excerpt' => '', 'post_content' => '', 'post_title' => '' );
 
 		$post_data = wp_parse_args( $content_struct, $defaults );
 
 		$post_type = get_post_type_object( $post_data['post_type'] );
-		if ( ! ( (bool) $post_type ) )
+		if ( ! $post_type )
 			return new IXR_Error( 403, __( 'Invalid post type' ) );
 
-		$update = false;
-		if ( ! empty( $post_data[ 'ID' ] ) )
-			$update = true;
+		$update = ! empty( $post_data['ID'] );
 
 		if ( $update ) {
-			if ( ! current_user_can( $post_type->cap->edit_post, $post_data[ 'ID' ] ) )
+			if ( ! get_post( $post_data['ID'] ) )
+				return new IXR_Error( 401, __( 'Invalid post ID.' ) );
+			if ( ! current_user_can( $post_type->cap->edit_post, $post_data['ID'] ) )
 				return new IXR_Error( 401, __( 'Sorry, you are not allowed to edit this post.' ) );
+			if ( $post_data['post_type'] != get_post_type( $post_data['ID'] ) )
+				return new IXR_Error( 401, __( 'The post type may not be changed.' ) );
 		} else {
 			if ( ! current_user_can( $post_type->cap->edit_posts ) )
 				return new IXR_Error( 401, __( 'Sorry, you are not allowed to post on this site.' ) );
@@ -773,16 +890,16 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 				break;
 			case 'private':
 				if ( ! current_user_can( $post_type->cap->publish_posts ) )
-					return new IXR_Error( 401, __( 'Sorry, you are not allowed to create private posts in this post type' ));
+					return new IXR_Error( 401, __( 'Sorry, you are not allowed to create private posts in this post type' ) );
 				break;
 			case 'publish':
 			case 'future':
 				if ( ! current_user_can( $post_type->cap->publish_posts ) )
-					return new IXR_Error( 401, __( 'Sorry, you are not allowed to publish posts in this post type' ));
+					return new IXR_Error( 401, __( 'Sorry, you are not allowed to publish posts in this post type' ) );
 				break;
 			default:
 				$post_data['post_status'] = 'draft';
-			break;
+				break;
 		}
 
 		if ( ! empty( $post_data['post_password'] ) && ! current_user_can( $post_type->cap->publish_posts ) )
@@ -801,22 +918,16 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			$post_data['post_author'] = $user->ID;
 		}
 
-		if ( isset( $post_data['comment_status'] ) ) {
-			if ( ! post_type_supports( $post_data['post_type'], 'comments' ) || ( $post_data['comment_status'] != 'open' && $post_data['comment_status'] != 'closed' ) ) {
-				unset( $post_data['comment_status'] );
-			}
-		}
+		if ( isset( $post_data['comment_status'] ) && $post_data['comment_status'] != 'open' && $post_data['comment_status'] != 'closed' )
+			unset( $post_data['comment_status'] );
 
-		if ( isset( $post_data['ping_status'] ) ) {
-			if ( ! post_type_supports( $post_data['post_type'], 'trackbacks' ) || ( $post_data['ping_status'] != 'open' && $post_data['ping_status'] != 'closed' ) ) {
-				unset( $post_data['ping_status'] );
-			}
-		}
+		if ( isset( $post_data['ping_status'] ) && $post_data['ping_status'] != 'open' && $post_data['ping_status'] != 'closed' )
+			unset( $post_data['ping_status'] );
 
 		// Do some timestamp voodoo
 		if ( ! empty( $post_data['post_date_gmt'] ) ) {
 			// We know this is supposed to be GMT, so we're going to slap that Z on there by force
-			$dateCreated = str_replace( 'Z', '', $post_data['post_date_gmt']->getIso() ) . 'Z';
+			$dateCreated = rtrim( $post_data['post_date_gmt']->getIso(), 'Z' ) . 'Z';
 		} elseif ( ! empty( $post_data['post_date'] ) ) {
 			$dateCreated = $post_data['post_date']->getIso();
 		}
@@ -826,40 +937,39 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			$post_data['post_date_gmt'] = iso8601_to_datetime( $dateCreated, 'GMT' );
 		}
 
-		if ( ! isset( $post_data['ID'] ) ) {
+		if ( ! isset( $post_data['ID'] ) )
 			$post_data['ID'] = get_default_post_to_edit( $post_data['post_type'], true )->ID;
-		}
 		$post_ID = $post_data['ID'];
 
-		$sticky = $post_data['sticky'] ? true : false;
-
-		if ( $post_data['post_type'] == 'post' && $sticky == true ) {
-			if ( ! current_user_can( $post_type->cap->edit_others_posts ) )
-				return new IXR_Error( 401, __( 'Sorry, you are not allowed to stick this post.' ) );
-
-			if ( $post_data['post_status'] != 'publish' )
-				return new IXR_Error( 401, __( 'Only published posts can be made sticky.' ) );
-
-			stick_post( $post_ID );
+		if ( $post_data['post_type'] == 'post' ) {
+			// Private and password-protected posts cannot be stickied.
+			if ( $post_data['post_status'] == 'private' || ! empty( $post_data['post_password'] ) ) {
+				// Error if the client tried to stick the post, otherwise, silently unstick.
+				if ( ! empty( $post_data['sticky'] ) )
+					return new IXR_Error( 401, __( 'Sorry, you cannot stick a private post.' ) );
+				if ( $update )
+					unstick_post( $post_ID );
+			} elseif ( isset( $post_data['sticky'] ) )  {
+				if ( ! current_user_can( $post_type->cap->edit_others_posts ) )
+					return new IXR_Error( 401, __( 'Sorry, you are not allowed to stick this post.' ) );
+				if ( $post_data['sticky'] )
+					stick_post( $post_ID );
+				else
+					unstick_post( $post_ID );
+			}
 		}
 
-		if ( isset ( $post_data['featured_image'] ) ) {
+		if ( isset( $post_data['post_thumbnail'] ) ) {
 			// empty value deletes, non-empty value adds/updates
-			if ( empty( $post_data['featured_image'] ) ) {
-				delete_post_meta( $post_ID, '_thumbnail_id' );
-			}
-			else {
-				$image = get_post( intval( $post_data['featured_image'] ), ARRAY_A );
-				if ( empty($image['ID'] ) )
-					return new IXR_Error( 404, __( 'Invalid attachment ID.' ) );
-				update_post_meta( $post_ID, '_thumbnail_id', $image['ID'] );
-			}
-			unset( $content_struct['featured_image'] );
+			if ( ! $post_data['post_thumbnail'] )
+				delete_post_thumbnail( $post_ID );
+			elseif ( ! set_post_thumbnail( $post_ID, $post_data['post_thumbnail'] ) )
+				return new IXR_Error( 404, __( 'Invalid attachment ID.' ) );
+			unset( $content_struct['post_thumbnail'] );
 		}
 
-		if ( isset ( $post_data['custom_fields'] ) && post_type_supports( $post_data['post_type'], 'custom-fields' ) ) {
+		if ( isset( $post_data['custom_fields'] ) )
 			$this->set_custom_fields( $post_ID, $post_data['custom_fields'] );
-		}
 
 		if ( isset( $post_data['terms'] ) || isset( $post_data['terms_names'] ) ) {
 			$post_type_taxonomies = get_object_taxonomies( $post_data['post_type'], 'objects' );
@@ -911,7 +1021,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 						$tax_term_names_count = array_count_values( $tax_term_names );
 
 						// filter out non-ambiguous term names
-						$ambiguous_tax_term_counts = array_filter( $tax_term_names_count, array( $this, '_is_greater_than_one' ) );
+						$ambiguous_tax_term_counts = array_filter( $tax_term_names_count, array( $this, '_is_greater_than_one') );
 
 						$ambiguous_terms = array_keys( $ambiguous_tax_term_counts );
 					}
@@ -942,11 +1052,10 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			}
 
 			$post_data['tax_input'] = $terms;
-			unset( $post_data['terms'] );
-			unset( $post_data['terms_names'] );
+			unset( $post_data['terms'], $post_data['terms_names'] );
 		} else {
 			// do not allow direct submission of 'tax_input', clients must use 'terms' and/or 'terms_names'
-			unset( $post_data['tax_input'] );
+			unset( $post_data['tax_input'], $post_data['post_category'], $post_data['tags_input'] );
 		}
 
 		if ( isset( $post_data['post_format'] ) ) {
@@ -992,9 +1101,12 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @return true on success
 	 */
 	function wp_editPost( $args ) {
+		if ( ! $this->minimum_args( $args, 5 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
-		$blog_id        = (int) $args[0]; // we will support this in the near future
+		$blog_id        = (int) $args[0];
 		$username       = $args[1];
 		$password       = $args[2];
 		$post_id        = (int) $args[3];
@@ -1005,11 +1117,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 		do_action( 'xmlrpc_call', 'wp.editPost' );
 
-		// User Capabilities are checked in _insert_post.
-
 		$post = get_post( $post_id, ARRAY_A );
 
-		if ( empty( $post["ID"] ) )
+		if ( empty( $post['ID'] ) )
 			return new IXR_Error( 404, __( 'Invalid post ID.' ) );
 
 		// convert the date field back to IXR form
@@ -1044,6 +1154,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @return true on success
 	 */
 	function wp_deletePost( $args ) {
+		if ( ! $this->minimum_args( $args, 4 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id    = (int) $args[0];
@@ -1115,6 +1228,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - 'enclosure'
 	 */
 	function wp_getPost( $args ) {
+		if ( ! $this->minimum_args( $args, 4 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id            = (int) $args[0];
@@ -1134,7 +1250,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 		$post = wp_get_single_post( $post_id, ARRAY_A );
 
-		if ( empty( $post["ID"] ) )
+		if ( empty( $post['ID'] ) )
 			return new IXR_Error( 404, __( 'Invalid post ID.' ) );
 
 		$post_type = get_post_type_object( $post['post_type'] );
@@ -1164,9 +1280,12 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string  $password
 	 *  - array   $filter optional
 	 *  - array   $fields optional
-	 * @return array cntains a collection of posts.
+	 * @return array contains a collection of posts.
 	 */
 	function wp_getPosts( $args ) {
+		if ( ! $this->minimum_args( $args, 3 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id    = (int) $args[0];
@@ -1216,7 +1335,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$posts_list = wp_get_recent_posts( $query );
 
 		if ( ! $posts_list )
-			return array( );
+			return array();
 
 		// holds all the posts data
 		$struct = array();
@@ -1233,141 +1352,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	/**
-	 * Retrieve post terms.
-	 *
-	 * The optional $group_by_taxonomy parameter specifies whether
-	 * the returned array should have terms grouped by taxonomy or
-	 * a flat list.
-	 *
-	 * @uses wp_get_object_terms()
-	 * @param array $args Method parameters. Contains:
-	 *  - int     $blog_id
-	 *  - string  $username
-	 *  - string  $password
-	 *  - int     $post_id
-	 *  - bool    $group_by_taxonomy optional
-	 * @return array term data
-	 */
-	function wp_getPostTerms( $args ) {
-		$this->escape( $args );
-
-		$blog_id            = (int) $args[0];
-		$username           = $args[1];
-		$password           = $args[2];
-		$post_id            = (int) $args[3];
-		$group_by_taxonomy        = isset( $args[4] ) ? $args[4] : true;
-
-		if ( ! $user = $this->login( $username, $password ) )
-			return $this->error;
-
-		do_action( 'xmlrpc_call', 'wp.getPostTerms' );
-
-		$post = wp_get_single_post( $post_id, ARRAY_A );
-		if ( empty( $post['ID'] ) )
-			return new IXR_Error( 404, __( 'Invalid post ID.' ) );
-
-		$post_type = get_post_type_object( $post['post_type'] );
-
-		if ( ! current_user_can( $post_type->cap->edit_post , $post_id ) )
-			return new IXR_Error( 401, __( 'Sorry, you are not allowed to edit this post.' ) );
-
-		$taxonomies = get_taxonomies( '' );
-
-		$terms = wp_get_object_terms( $post_id , $taxonomies );
-
-		if ( is_wp_error( $terms ) )
-			return new IXR_Error( 500 , $terms->get_error_message() );
-
-		$struct = array();
-
-		foreach ( $terms as $term ) {
-			if ( $group_by_taxonomy ) {
-				$taxonomy = $term->taxonomy;
-
-				if ( ! array_key_exists( $taxonomy, $struct ) )
-					$struct[$taxonomy] = array();
-
-				$struct[$taxonomy][] = $this->prepare_term( $term );
-			}
-			else {
-				$struct[] = $this->prepare_term( $term );
-			}
-		}
-
-		return $struct;
-	}
-
-	/**
-	 * Set post terms.
-	 *
-	 * @uses wp_set_object_terms()
-	 * @param array $args Method parameters. Contains:
-	 *  - int     $blog_id
-	 *  - string  $username
-	 *  - string  $password
-	 *  - int     $post_id
-	 *  - array   $content_struct contains term_ids with taxonomy as keys
-	 *  - bool    $append
-	 * @return boolean true
-	 */
-	function wp_setPostTerms( $args ) {
-		$this->escape( $args );
-
-		$blog_id            = (int) $args[0];
-		$username           = $args[1];
-		$password           = $args[2];
-		$post_ID            = (int) $args[3];
-		$content_struct     = $args[4];
-		$append             = $args[5] ? true : false;
-
-		if ( ! $user = $this->login( $username, $password ) )
-			return $this->error;
-
-		do_action( 'xmlrpc_call', 'wp.setPostTerms' );
-
-		$post = wp_get_single_post( $post_ID, ARRAY_A );
-		if ( empty( $post['ID'] ) )
-			return new IXR_Error( 404, __( 'Invalid post ID.' ) );
-
-		$post_type = get_post_type_object( $post['post_type'] );
-
-		if ( ! current_user_can( $post_type->cap->edit_post , $post_ID ) )
-			return new IXR_Error( 401, __( 'Sorry, You are not allowed to edit this post.' ) );
-
-		$post_type_taxonomies = get_object_taxonomies( $post['post_type'] );
-
-		$taxonomies = array_keys( $content_struct );
-
-		// validating term ids
-		foreach ( $taxonomies as $taxonomy ) {
-			if ( ! in_array( $taxonomy , $post_type_taxonomies ) )
-				return new IXR_Error( 401, __( 'Sorry, one of the given taxonomy is not supported by the post type.' ) );
-
-			$term_ids = $content_struct[$taxonomy];
-			foreach ( $term_ids as $term_id ) {
-
-				$term = get_term( $term_id, $taxonomy );
-
-				if ( is_wp_error( $term ) )
-					return new IXR_Error( 500, $term->get_error_message() );
-
-				if ( ! $term )
-					return new IXR_Error( 403, __( 'Invalid term ID' ) );
-			}
-		}
-
-		foreach ( $taxonomies as $taxonomy ) {
-			$term_ids = $content_struct[$taxonomy];
-			$term_ids = array_map( 'intval', $term_ids );
-			$term_ids = array_unique( $term_ids );
-			wp_set_object_terms( $post_ID , $term_ids, $taxonomy , $append );
-		}
-
-		return true;
-	}
-
-	/**
-	 * Retrieve a post type.
+	 * Retrieves a post type
 	 *
 	 * @uses get_post_type_object()
 	 * @param array $args Method parameters. Contains:
@@ -1375,6 +1360,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - string  $username
 	 *  - string  $password
 	 *  - string  $post_type_name
+	 *  - array   $fields
 	 * @return array contains:
 	 *  - 'labels'
 	 *  - 'description'
@@ -1384,8 +1370,12 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - 'hierarchical'
 	 *  - 'menu_position'
 	 *  - 'taxonomies'
+	 *  - 'supports'
 	 */
 	function wp_getPostType( $args ) {
+		if ( ! $this->minimum_args( $args, 4 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id        = (int) $args[0];
@@ -1393,53 +1383,69 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$password       = $args[2];
 		$post_type_name = $args[3];
 
-		if ( ! $user = $this->login( $username, $password ) )
+		if ( isset( $args[4] ) )
+			$fields = $args[4];
+		else
+			$fields = apply_filters( 'xmlrpc_default_posttype_fields', array( 'labels', 'cap', 'taxonomies' ), 'wp.getPostType' );
+
+		if ( !$user = $this->login( $username, $password ) )
 			return $this->error;
 
 		do_action( 'xmlrpc_call', 'wp.getPostType' );
 
-		if ( ! post_type_exists( $post_type_name ) )
+		if( ! post_type_exists( $post_type_name ) )
 			return new IXR_Error( 403, __( 'Invalid post type.' ) );
 
 		$post_type = get_post_type_object( $post_type_name );
 
-		if ( ! current_user_can( $post_type->cap->edit_posts ) )
+		if( ! current_user_can( $post_type->cap->edit_posts ) )
 			return new IXR_Error( 401, __( 'Sorry, you are not allowed to edit this post type.' ) );
 
-		return $this->_prepare_post_type( $post_type );
+		return $this->_prepare_post_type( $post_type, $fields );
 	}
 
 	/**
-	 * Retrieve all post types.
+	 * Retrieves a post types
 	 *
 	 * @uses get_post_types()
 	 * @param array $args Method parameters. Contains:
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
+	 *  - array   $filter
+	 *  - array   $fields
 	 * @return array
 	 */
 	function wp_getPostTypes( $args ) {
+		if ( ! $this->minimum_args( $args, 3 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
+		$filter             = isset( $args[3] ) ? $args[3] : array( 'public' => true );
+
+		if ( isset( $args[4] ) )
+			$fields = $args[4];
+		else
+			$fields = apply_filters( 'xmlrpc_default_posttype_fields', array( 'labels', 'cap', 'taxonomies' ), 'wp.getPostTypes' );
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
 		do_action( 'xmlrpc_call', 'wp.getPostTypes' );
 
-		$post_types = get_post_types( '', 'objects' );
+		$post_types = get_post_types( $filter, 'objects' );
 
 		$struct = array();
 
-		foreach ( $post_types as $post_type ) {
-			if ( ! current_user_can( $post_type->cap->edit_posts ) )
+		foreach( $post_types as $post_type ) {
+			if( ! current_user_can( $post_type->cap->edit_posts ) )
 				continue;
 
-			$struct[] = $this->_prepare_post_type( $post_type );
+			$struct[$post_type->name] = $this->_prepare_post_type( $post_type, $fields );
 		}
 
 		return $struct;
@@ -1464,6 +1470,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @return string term_id
 	 */
 	function wp_newTerm( $args ) {
+		if ( ! $this->minimum_args( $args, 4 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id            = (int) $args[0];
@@ -1546,6 +1555,9 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @return bool True, on success.
 	 */
 	function wp_editTerm( $args ) {
+		if ( ! $this->minimum_args( $args, 5 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id            = (int) $args[0];
@@ -1633,12 +1645,15 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @return boolean|IXR_Error If it suceeded true else a reason why not
 	 */
 	function wp_deleteTerm( $args ) {
+		if ( ! $this->minimum_args( $args, 5 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
-		$taxonomy_name      = $args[3];
+		$taxonomy           = $args[3];
 		$term_id            = (int) $args[4];
 
 		if ( ! $user = $this->login( $username, $password ) )
@@ -1646,15 +1661,15 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 		do_action( 'xmlrpc_call', 'wp.deleteTerm' );
 
-		if ( ! taxonomy_exists( $taxonomy_name ) )
+		if ( ! taxonomy_exists( $taxonomy ) )
 			return new IXR_Error( 403, __( 'Invalid taxonomy.' ) );
 
-		$taxonomy = get_taxonomy( $taxonomy_name );
+		$taxonomy = get_taxonomy( $taxonomy );
 
 		if ( ! current_user_can( $taxonomy->cap->delete_terms ) )
 			return new IXR_Error( 401, __( 'You are not allowed to delete terms in this taxonomy.' ) );
 
-		$term = get_term( $term_id, $taxonomy_name );
+		$term = get_term( $term_id, $taxonomy->name );
 
 		if ( is_wp_error( $term ) )
 			return new IXR_Error( 500, $term->get_error_message() );
@@ -1662,7 +1677,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( ! $term )
 			return new IXR_Error( 404, __( 'Invalid term ID.' ) );
 
-		$result = wp_delete_term( $term_id, $taxonomy_name );
+		$result = wp_delete_term( $term_id, $taxonomy->name );
 
 		if ( is_wp_error( $result ) )
 			return new IXR_Error( 500, $term->get_error_message() );
@@ -1681,7 +1696,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
-	 *  - string  $taxonomy_name
+	 *  - string  $taxonomy
 	 *  - string  $term_id
 	 * @return array contains:
 	 *  - 'term_id'
@@ -1695,12 +1710,15 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - 'count'
 	 */
 	function wp_getTerm( $args ) {
+		if ( ! $this->minimum_args( $args, 5 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
-		$taxonomy_name      = $args[3];
+		$taxonomy           = $args[3];
 		$term_id            = (int) $args[4];
 
 		if ( ! $user = $this->login( $username, $password ) )
@@ -1708,15 +1726,15 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 		do_action( 'xmlrpc_call', 'wp.getTerm' );
 
-		if ( ! taxonomy_exists( $taxonomy_name ) )
+		if ( ! taxonomy_exists( $taxonomy ) )
 			return new IXR_Error( 403, __( 'Invalid taxonomy.' ) );
 
-		$taxonomy = get_taxonomy( $taxonomy_name );
+		$taxonomy = get_taxonomy( $taxonomy );
 
 		if ( ! current_user_can( $taxonomy->cap->assign_terms ) )
 			return new IXR_Error( 401, __( 'You are not allowed to assign terms in this taxonomy.' ) );
 
-		$term = get_term( $term_id , $taxonomy_name, ARRAY_A );
+		$term = get_term( $term_id , $taxonomy->name, ARRAY_A );
 
 		if ( is_wp_error( $term ) )
 			return new IXR_Error( 500, $term->get_error_message() );
@@ -1738,17 +1756,20 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
-	 *  - string  $taxonomy_name
+	 *  - string  $taxonomy
 	 *  - array   $filter optional
 	 * @return array terms
 	 */
 	function wp_getTerms( $args ) {
+		if ( ! $this->minimum_args( $args, 4 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id        = (int) $args[0];
 		$username       = $args[1];
 		$password       = $args[2];
-		$taxonomy_name  = $args[3];
+		$taxonomy       = $args[3];
 		$filter         = isset( $args[4] ) ? $args[4] : array();
 
 		if ( ! $user = $this->login( $username, $password ) )
@@ -1756,10 +1777,10 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 		do_action( 'xmlrpc_call', 'wp.getTerms' );
 
-		if ( ! taxonomy_exists( $taxonomy_name ) )
+		if ( ! taxonomy_exists( $taxonomy ) )
 			return new IXR_Error( 403, __( 'Invalid taxonomy.' ) );
 
-		$taxonomy = get_taxonomy( $taxonomy_name );
+		$taxonomy = get_taxonomy( $taxonomy );
 
 		if ( ! current_user_can( $taxonomy->cap->assign_terms ) )
 			return new IXR_Error( 401, __( 'You are not allowed to assign terms in this taxonomy.' ) );
@@ -1787,7 +1808,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( isset( $filter['search'] ) )
 			$query['search'] = $filter['search'];
 
-		$terms = get_terms( $taxonomy_name, $query );
+		$terms = get_terms( $taxonomy->name, $query );
 
 		if ( is_wp_error( $terms ) )
 			return new IXR_Error( 500, $terms->get_error_message() );
@@ -1809,31 +1830,39 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - int     $blog_id
 	 *  - string  $username
 	 *  - string  $password
-	 *  - string  $taxonomy_name
+	 *  - string  $taxonomy
 	 * @return array (@see get_taxonomy())
 	 */
 	function wp_getTaxonomy( $args ) {
+		if ( ! $this->minimum_args( $args, 4 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id        = (int) $args[0];
 		$username       = $args[1];
 		$password       = $args[2];
-		$taxonomy_name  = $args[3];
+		$taxonomy       = $args[3];
+
+		if ( isset( $args[4] ) )
+			$fields = $args[4];
+		else
+			$fields = apply_filters( 'xmlrpc_default_taxonomy_fields', array( 'labels', 'cap', 'object_type' ), 'wp.getTaxonomy' );
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
 		do_action( 'xmlrpc_call', 'wp.getTaxonomy' );
 
-		if ( ! taxonomy_exists( $taxonomy_name ) )
+		if ( ! taxonomy_exists( $taxonomy ) )
 			return new IXR_Error( 403, __( 'Invalid taxonomy.' ) );
 
-		$taxonomy = get_taxonomy( $taxonomy_name );
+		$taxonomy = get_taxonomy( $taxonomy );
 
 		if ( ! current_user_can( $taxonomy->cap->assign_terms ) )
 			return new IXR_Error( 401, __( 'You are not allowed to assign terms in this taxonomy.' ) );
 
-		return $this->_prepare_taxonomy( $taxonomy );
+		return $this->_prepare_taxonomy( $taxonomy, $fields );
 	}
 
 	/**
@@ -1847,18 +1876,27 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @return array taxonomies
 	 */
 	function wp_getTaxonomies( $args ) {
+		if ( ! $this->minimum_args( $args, 3 ) )
+			return $this->error;
+
 		$this->escape( $args );
 
 		$blog_id            = (int) $args[0];
 		$username           = $args[1];
 		$password           = $args[2];
+		$filter             = isset( $args[3] ) ? $args[3] : array( 'public' => true );
+
+		if ( isset( $args[4] ) )
+			$fields = $args[4];
+		else
+			$fields = apply_filters( 'xmlrpc_default_taxonomy_fields', array( 'labels', 'cap', 'object_type' ), 'wp.getTaxonomies' );
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
 		do_action( 'xmlrpc_call', 'wp.getTaxonomies' );
 
-		$taxonomies = get_taxonomies( '', 'objects' );
+		$taxonomies = get_taxonomies( $filter, 'objects' );
 
 		// holds all the taxonomy data
 		$struct = array();
@@ -1868,7 +1906,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			if ( ! current_user_can( $taxonomy->cap->assign_terms ) )
 				continue;
 
-			$struct[] = $this->_prepare_taxonomy( $taxonomy );
+			$struct[] = $this->_prepare_taxonomy( $taxonomy, $fields );
 		}
 
 		return $struct;
