@@ -1967,8 +1967,15 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	}
 
 	function wxm_handle_upload( $struct ) {
-		$attachment_id = url_to_postid( $struct['url'] );
-		$struct['id'] = $attachment_id;
+		// prior to WP3.4, 'id' was not included in the struct returned by metaWeblog.newMediaObject/wp.uploadFile.
+		// to add it, we need to find the most recent attachment with post_title equal to the filename.
+		if ( ! in_array( 'id', $struct ) ) {
+			global $wpdb;
+			$id = $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM $wpdb->posts WHERE post_title='%s' AND post_type='attachment' ORDER BY post_date DESC", $struct['file'] ) );
+			if ( $id !== null ) {
+				$struct['id'] = $id;
+			}
+		}
 		return $struct;
 	}
 
