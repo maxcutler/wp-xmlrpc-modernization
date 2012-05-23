@@ -48,6 +48,10 @@ New Methods:
 
 == Changelog ==
 
+= 0.8.1 =
+* Fixed broken 'number' filter parameter behavior for wp.getPosts.
+* Fixed broken 'id' return value of wp.uploadFile and metaWeblog.newMediaObject.
+
 = 0.8 =
 * Alignment with WordPress core progress (RC1).
 * Removed wp.getPostTerms and wp.setPostTerms.
