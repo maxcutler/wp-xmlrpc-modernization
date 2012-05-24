@@ -48,6 +48,15 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$new_methods['wp.getTaxonomy']      = array( &$this, 'wp_getTaxonomy' );
 		$new_methods['wp.getTaxonomies']    = array( &$this, 'wp_getTaxonomies' );
 
+		global $wp_version;
+		$version_bits = explode( '-', $wp_version );
+		$version = $version_bits[0];
+		if ( $version < 3.4 ) {
+			// for pre-3.4, explicitly override the core implementation.
+			$methods['wp.getMediaItem'] = array( &$this, 'wxm_wp_getMediaItem' );
+			$methods['wp.getMediaLibrary'] = array( &$this, 'wxm_wp_getMediaLibrary' );
+		}
+
 		// array_merge will take the values defined in later arguments, so
 		// the plugin will not overwrite any methods defined by WP core
 		// (i.e., plugin will be forward-compatible with future releases of WordPress
@@ -2027,6 +2036,60 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		);
 
 		return array_merge( $wp34_options, $options );
+	}
+
+	// need to totally replace these old implementations
+	function wxm_wp_getMediaItem($args) {
+		$this->escape($args);
+
+		$blog_id		= (int) $args[0];
+		$username		= $args[1];
+		$password		= $args[2];
+		$attachment_id	= (int) $args[3];
+
+		if ( !$user = $this->login($username, $password) )
+			return $this->error;
+
+		if ( !current_user_can( 'upload_files' ) )
+			return new IXR_Error( 403, __( 'You are not allowed to upload files to this site.' ) );
+
+		do_action('xmlrpc_call', 'wp.getMediaItem');
+
+		if ( ! $attachment = get_post($attachment_id) )
+			return new IXR_Error( 404, __( 'Invalid attachment ID.' ) );
+
+		return $this->_prepare_media_item( $attachment );
+	}
+
+	function wxm_wp_getMediaLibrary($args) {
+		$this->escape($args);
+
+		$blog_id	= (int) $args[0];
+		$username	= $args[1];
+		$password	= $args[2];
+		$struct		= isset( $args[3] ) ? $args[3] : array() ;
+
+		if ( !$user = $this->login($username, $password) )
+			return $this->error;
+
+		if ( !current_user_can( 'upload_files' ) )
+			return new IXR_Error( 401, __( 'Sorry, you cannot upload files.' ) );
+
+		do_action('xmlrpc_call', 'wp.getMediaLibrary');
+
+		$parent_id = ( isset($struct['parent_id']) ) ? absint($struct['parent_id']) : '' ;
+		$mime_type = ( isset($struct['mime_type']) ) ? $struct['mime_type'] : '' ;
+		$offset = ( isset($struct['offset']) ) ? absint($struct['offset']) : 0 ;
+		$number = ( isset($struct['number']) ) ? absint($struct['number']) : -1 ;
+
+		$attachments = get_posts( array('post_type' => 'attachment', 'post_parent' => $parent_id, 'offset' => $offset, 'numberposts' => $number, 'post_mime_type' => $mime_type ) );
+
+		$attachments_struct = array();
+
+		foreach ($attachments as $attachment )
+			$attachments_struct[] = $this->_prepare_media_item( $attachment );
+
+		return $attachments_struct;
 	}
 }
 
