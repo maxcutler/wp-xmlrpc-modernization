@@ -3,7 +3,7 @@
 /*
  * Plugin Name: wp-xmlrpc-modernization
  * Description: This plugin extends the basic XML-RPC API exposed by WordPress. Derived from GSoC '11 project.
- * Version: 0.8.1
+ * Version: 0.8.2
  * Author: Max Cutler
  * Author URI: http://www.maxcutler.com
  *

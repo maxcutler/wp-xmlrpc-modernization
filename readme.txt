@@ -48,6 +48,9 @@ New Methods:
 
 == Changelog ==
 
+= 0.8.2 =
+* Added 'attachment_id' to wp.getMediaLibrary and wp.getMediaItem to match 3.4 core.
+
 = 0.8.1 =
 * Fixed broken 'number' filter parameter behavior for wp.getPosts.
 * Fixed broken 'id' return value of wp.uploadFile and metaWeblog.newMediaObject.
