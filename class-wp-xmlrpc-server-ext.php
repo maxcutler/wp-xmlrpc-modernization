@@ -102,14 +102,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * @return array The prepared user data
 	 */
 	protected function wxm_prepare_user( $user, $fields ) {
-		$contact_methods = _wp_get_user_contactmethods();
-
-		$user_contacts = array();
-		foreach ( $contact_methods as $key => $value ) {
-			$user_contacts[$key] = $user->$key;
-		}
-
-		$_user = array( 'user_id' => $user->ID );
+		$_user = array( 'user_id' => strval( $user->ID ) );
 
 		$user_fields = array(
 			'username'          => $user->user_login,
@@ -122,15 +115,12 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			'nicename'          => $user->user_nicename,
 			'url'               => $user->user_url,
 			'display_name'      => $user->display_name,
-			'capabilities'      => $user->wp_capabilities,
-			'user_level'        => $user->wp_user_level,
-			'user_contacts'     => $user_contacts
+			'roles'             => $user->roles,
 		);
 
 		if ( in_array( 'all', $fields ) ) {
 			$_user = array_merge( $_user, $user_fields );
-		}
-		else {
+		} else {
 			if ( in_array( 'basic', $fields ) ) {
 				$basic_fields = array( 'username', 'email', 'registered', 'display_name', 'nicename' );
 				$fields = array_merge( $fields, $basic_fields );
@@ -718,9 +708,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - 'nicename'
 	 *  - 'url'
 	 *  - 'display_name'
-	 *  - 'capabilities'
-	 *  - 'user_level'
-	 *  - 'user_contacts'
+	 *  - 'roles'
 	 */
 	function wxm_wp_getUser( $args ) {
 		if ( ! $this->minimum_args( $args, 4 ) )
@@ -743,17 +731,15 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 		do_action( 'xmlrpc_call', 'wp.getUser' );
 
+		if ( ! current_user_can( 'edit_user', $user_id ) )
+			return new IXR_Error( 401, __( 'Sorry, you cannot edit users.' ) );
+
 		$user_data = get_userdata( $user_id );
 
 		if ( ! $user_data )
 			return new IXR_Error( 404, __( 'Invalid user ID' ) );
 
-		if ( ! ( $user_id == $user->ID || current_user_can( 'edit_users' ) ) )
-			return new IXR_Error( 401, __( 'Sorry, you cannot edit users.' ) );
-
-		$user = $this->_prepare_user( $user_data, $fields );
-
-		return $user;
+		return $this->_prepare_user( $user_data, $fields );
 	}
 
 	/**
