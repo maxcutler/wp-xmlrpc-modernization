@@ -56,13 +56,14 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			$methods['wp.getMediaItem'] = array( &$this, 'wxm_wp_getMediaItem' );
 			$methods['wp.getMediaLibrary'] = array( &$this, 'wxm_wp_getMediaLibrary' );
 		}
-		if ($version < 3.5 ) {
-			// for pre-3.5, explicitly override the core implementation of uploads and post editing
+		if ( $version < 3.5 ) {
+			// for pre-3.5, explicitly override the core implementation of uploads and posts
 			$methods['wp.uploadFile'] = array( &$this, 'wxm_wp_uploadFile' );
 			$methods['metaWeblog.newMediaObject'] = array( &$this, 'wxm_wp_uploadFile' );
 
 			$methods['wp.newPost'] = array( &$this, 'wxm_wp_newPost' );
 			$methods['wp.editPost'] = array( &$this, 'wxm_wp_editPost' );
+			$methods['wp.getPosts'] = array( &$this, 'wxm_wp_getPosts' );
 		}
 
 		// array_merge will take the values defined in later arguments, so
@@ -1417,7 +1418,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *
 	 * The optional $filter parameter modifies the query used to retrieve posts.
 	 * Accepted keys are 'post_type', 'post_status', 'number', 'offset',
-	 * 'orderby', and 'order'.
+	 * 'orderby', 'order', and 's'.
 	 *
 	 * The optional $fields parameter specifies what fields will be included
 	 * in the response array.
@@ -1482,6 +1483,10 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 			if ( isset( $filter['order'] ) )
 				$query['order'] = $filter['order'];
+		}
+
+		if ( isset( $filter['s'] ) ) {
+			$query['s'] = $filter['s'];
 		}
 
 		$posts_list = wp_get_recent_posts( $query );
