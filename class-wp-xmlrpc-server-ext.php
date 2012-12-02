@@ -28,7 +28,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$new_methods['wp.deleteUser']       = array( &$this, 'wp_deleteUser' );
 		$new_methods['wp.getUser']          = array( &$this, 'wp_getUser' );
 		$new_methods['wp.getUsers']         = array( &$this, 'wp_getUsers' );
-		$new_methods['wp.getUserInfo']      = array( &$this, 'wp_getUserInfo' );
+		$new_methods['wp.getProfile']       = array( &$this, 'wp_getProfile' );
 
 		// custom post type management
 		$new_methods['wp.newPost']          = array( &$this, 'wp_newPost' );
@@ -831,7 +831,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *  - array   $fields optional
 	 * @return array (@see wp_getUser)
 	 */
-	function wxm_wp_getUserInfo( $args ) {
+	function wxm_wp_getProfile( $args ) {
 		if ( ! $this->minimum_args( $args, 3 ) )
 			return $this->error;
 
@@ -844,17 +844,19 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( isset( $args[3] ) )
 			$fields = $args[3];
 		else
-			$fields = apply_filters( 'xmlrpc_default_user_fields', array( 'all' ), 'wp.getUserInfo' );
+			$fields = apply_filters( 'xmlrpc_default_user_fields', array( 'all' ), 'wp.getProfile' );
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
-		do_action( 'xmlrpc_call', 'wp.getUserInfo' );
+		do_action( 'xmlrpc_call', 'wp.getProfile' );
+
+		if ( ! current_user_can( 'edit_user', $user->ID ) )
+			return new IXR_Error( 401, __( 'Sorry, you cannot edit your profile.' ) );
 
 		$user_data = get_userdata( $user->ID );
-		$user = $this->_prepare_user( $user_data, $fields );
 
-		return $user;
+		return $this->_prepare_user( $user_data, $fields );
 	}
 
 	/**
