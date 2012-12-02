@@ -29,6 +29,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$new_methods['wp.getUser']          = array( &$this, 'wp_getUser' );
 		$new_methods['wp.getUsers']         = array( &$this, 'wp_getUsers' );
 		$new_methods['wp.getProfile']       = array( &$this, 'wp_getProfile' );
+		$new_methods['wp.editProfile']      = array( &$this, 'wp_editProfile' );
 
 		// custom post type management
 		$new_methods['wp.newPost']          = array( &$this, 'wp_newPost' );
@@ -857,6 +858,81 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$user_data = get_userdata( $user->ID );
 
 		return $this->_prepare_user( $user_data, $fields );
+	}
+
+	/**
+	 * Edit user's profile.
+	 *
+	 * @uses wp_update_user()
+	 * @param array $args Method parameters. Contains:
+	 *  - int     $blog_id
+	 *  - string  $username
+	 *  - string  $password
+	 *  - array   $content_struct
+	 *      It can optionally contain:
+	 *      - 'first_name'
+	 *      - 'last_name'
+	 *      - 'website'
+	 *      - 'display_name'
+	 *      - 'nickname'
+	 *      - 'nicename'
+	 *      - 'bio'
+	 * @return bool True, on success.
+	 */
+	function wxm_wp_editProfile( $args ) {
+		if ( ! $this->minimum_args( $args, 4 ) )
+			return $this->error;
+
+		$this->escape( $args );
+
+		$blog_id        = (int) $args[0];
+		$username       = $args[1];
+		$password       = $args[2];
+		$content_struct = $args[3];
+
+		if ( ! $user = $this->login( $username, $password ) )
+			return $this->error;
+
+		do_action( 'xmlrpc_call', 'wp.editProfile' );
+
+		if ( ! current_user_can( 'edit_user', $user->ID ) )
+			return new IXR_Error( 401, __( 'Sorry, you cannot edit your profile.' ) );
+
+		// holds data of the user
+		$user_data = array();
+		$user_data['ID'] = $user->ID;
+
+		// only set the user details if it was given
+		if ( isset( $content_struct['first_name'] ) )
+			$user_data['first_name'] = $content_struct['first_name'];
+
+		if ( isset( $content_struct['last_name'] ) )
+			$user_data['last_name'] = $content_struct['last_name'];
+
+		if ( isset( $content_struct['url'] ) )
+			$user_data['user_url'] = $content_struct['url'];
+
+		if ( isset( $content_struct['display_name'] ) )
+			$user_data['display_name'] = $content_struct['display_name'];
+
+		if ( isset( $content_struct['nickname'] ) )
+			$user_data['nickname'] = $content_struct['nickname'];
+
+		if ( isset( $content_struct['nicename'] ) )
+			$user_data['user_nicename'] = $content_struct['nicename'];
+
+		if ( isset( $content_struct['bio'] ) )
+			$user_data['description'] = $content_struct['bio'];
+
+		$result = wp_update_user( $user_data );
+
+		if ( is_wp_error( $result ) )
+			return new IXR_Error( 500, $result->get_error_message() );
+
+		if ( ! $result )
+			return new IXR_Error( 500, __( 'Sorry, the user cannot be updated.' ) );
+
+		return true;
 	}
 
 	/**
