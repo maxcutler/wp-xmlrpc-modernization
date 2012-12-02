@@ -1991,6 +1991,11 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	function wxm_blog_options( $options ) {
 		$wp34_options = array(
 			// Read only options
+			'home_url'          => array(
+				 'desc'         => __( 'Home URL' ),
+				'readonly'      => true,
+				'option'        => 'home'
+			),
 			'image_default_link_type' => array(
 				'desc'          => __( 'Image default link type' ),
 				'readonly'      => true,
