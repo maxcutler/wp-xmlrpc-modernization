@@ -25,9 +25,13 @@ New Methods:
 * wp.newUser - create a new user
 * wp.editUser - edit user information
 * wp.deleteUser - delete a specfic user
+
+3.5 Methods for pre-3.5 sites:
+
 * wp.getUser - get information about a specific user
 * wp.getUsers - retrieve a list of users
-* wp.getUserInfo - get information about the requesting user
+* wp.getProfile - retrieve information about the requesting user
+* wp.editProfile - edit the profile of the requesting user
 
 3.4 Methods for pre-3.4 sites:
 
@@ -47,6 +51,11 @@ New Methods:
 * wp.getTerms - get a list of term associated with a taxonomy
 
 == Changelog ==
+
+= 0.9 =
+* Alignment with WordPress core version of wp.getUser and wp.getUsers.
+* Renamed wp.getUserInfo to wp.getProfile to match WordPress core.
+* Added wp.editProfile to match WordPress core.
 
 = 0.8.2 =
 * Added 'attachment_id' to wp.getMediaLibrary and wp.getMediaItem to match 3.4 core.
