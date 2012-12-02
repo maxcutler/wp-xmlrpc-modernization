@@ -36,8 +36,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$new_methods['wp.getPosts']         = array( &$this, 'wp_getPosts' );
 		$new_methods['wp.getPostType']      = array( &$this, 'wp_getPostType' );
 		$new_methods['wp.getPostTypes']     = array( &$this, 'wp_getPostTypes' );
-		$new_methods['wp.getRevisions']	    = array( &$this, 'wp_getRevisions');
-		$new_methods['wp.restoreRevision']  = array( &$this, 'wp_restoreRevision');
+		$new_methods['wp.getRevisions']     = array( &$this, 'wp_getRevisions' );
+		$new_methods['wp.restoreRevision']  = array( &$this, 'wp_restoreRevision' );
 
 		// custom taxonomy management
 		$new_methods['wp.newTerm']          = array( &$this, 'wp_newTerm' );
