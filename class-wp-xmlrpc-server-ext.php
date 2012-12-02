@@ -10,9 +10,6 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		// hook filter to add the new methods after the existing ones are added in the parent constructor
 		add_filter( 'xmlrpc_methods' , array( &$this, 'wxm_xmlrpc_methods' ) );
 
-		// patch wp.uploadFile to return ID
-		add_filter( 'wp_handle_upload', array( &$this, 'wxm_handle_upload' ) );
-
 		// add new options
 		add_filter( 'xmlrpc_blog_options', array( &$this, 'wxm_blog_options' ) );
 
@@ -58,6 +55,14 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			// for pre-3.4, explicitly override the core implementation.
 			$methods['wp.getMediaItem'] = array( &$this, 'wxm_wp_getMediaItem' );
 			$methods['wp.getMediaLibrary'] = array( &$this, 'wxm_wp_getMediaLibrary' );
+		}
+		if ($version < 3.5 ) {
+			// for pre-3.5, explicitly override the core implementation of uploads and post editing
+			$methods['wp.uploadFile'] = array( &$this, 'wxm_wp_uploadFile' );
+			$methods['metaWeblog.newMediaObject'] = array( &$this, 'wxm_wp_uploadFile' );
+
+			$methods['wp.newPost'] = array( &$this, 'wxm_wp_newPost' );
+			$methods['wp.editPost'] = array( &$this, 'wxm_wp_editPost' );
 		}
 
 		// array_merge will take the values defined in later arguments, so
@@ -985,7 +990,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 
 		unset( $content_struct['ID'] );
 
-		return $this->_insert_post( $user, $content_struct );
+		return $this->wxm_insert_post( $user, $content_struct );
 	}
 
 	/*
@@ -1282,7 +1287,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		$this->escape( $post );
 		$merged_content_struct = array_merge( $post, $content_struct );
 
-		$retval = $this->_insert_post( $user, $merged_content_struct );
+		$retval = $this->wxm_insert_post( $user, $merged_content_struct );
 		if ( $retval instanceof IXR_Error )
 			return $retval;
 
@@ -2177,17 +2182,90 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		return (bool) $post;
 	}
 
-	function wxm_handle_upload( $struct ) {
-		// prior to WP3.4, 'id' was not included in the struct returned by metaWeblog.newMediaObject/wp.uploadFile.
-		// to add it, we need to find the most recent attachment with post_title equal to the filename.
-		if ( ! in_array( 'id', $struct ) ) {
-			global $wpdb;
-			$id = $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM $wpdb->posts WHERE post_title='%s' AND post_type='attachment' ORDER BY post_date DESC", $struct['file'] ) );
-			if ( $id !== null ) {
-				$struct['id'] = $id;
-			}
+	/**
+	 * Uploads a file, following your settings.
+	 *
+	 * @param array $args Method parameters.
+	 * @return array
+	 */
+	function wxm_wp_uploadFile($args) {
+		global $wpdb;
+
+		$blog_ID     = (int) $args[0];
+		$username  = $wpdb->escape($args[1]);
+		$password   = $wpdb->escape($args[2]);
+		$data        = $args[3];
+
+		$name = sanitize_file_name( $data['name'] );
+		$type = $data['type'];
+		$bits = $data['bits'];
+
+		if ( !$user = $this->login($username, $password) )
+			return $this->error;
+
+		do_action('xmlrpc_call', 'metaWeblog.newMediaObject');
+
+		if ( !current_user_can('upload_files') ) {
+			$this->error = new IXR_Error( 401, __( 'You do not have permission to upload files.' ) );
+			return $this->error;
 		}
-		return $struct;
+
+		if ( $upload_err = apply_filters( 'pre_upload_error', false ) )
+			return new IXR_Error(500, $upload_err);
+
+		if ( !empty($data['overwrite']) && ($data['overwrite'] == true) ) {
+			// Get postmeta info on the object.
+			$old_file = $wpdb->get_row("
+				SELECT ID
+				FROM {$wpdb->posts}
+				WHERE post_title = '{$name}'
+					AND post_type = 'attachment'
+			");
+
+			// Delete previous file.
+			wp_delete_attachment($old_file->ID);
+
+			// Make sure the new name is different by pre-pending the
+			// previous post id.
+			$filename = preg_replace('/^wpid\d+-/', '', $name);
+			$name = "wpid{$old_file->ID}-{$filename}";
+		}
+
+		$upload = wp_upload_bits($name, null, $bits);
+		if ( ! empty($upload['error']) ) {
+			$errorString = sprintf(__('Could not write file %1$s (%2$s)'), $name, $upload['error']);
+			return new IXR_Error(500, $errorString);
+		}
+		// Construct the attachment array
+		$post_id = 0;
+		if ( ! empty( $data['post_id'] ) ) {
+			$post_id = (int) $data['post_id'];
+
+			if ( ! current_user_can( 'edit_post', $post_id ) )
+				return new IXR_Error( 401, __( 'Sorry, you cannot edit this post.' ) );
+		}
+		$attachment = array(
+			'post_title' => $name,
+			'post_content' => '',
+			'post_type' => 'attachment',
+			'post_parent' => $post_id,
+			'post_mime_type' => $type,
+			'guid' => $upload[ 'url' ]
+		);
+
+		// Save the data
+		$id = wp_insert_attachment( $attachment, $upload[ 'file' ], $post_id );
+		wp_update_attachment_metadata( $id, wp_generate_attachment_metadata( $id, $upload['file'] ) );
+
+		do_action( 'xmlrpc_call_success_mw_newMediaObject', $id, $args );
+
+		$struct = array(
+			'id'   => strval( $id ),
+			'file' => $name,
+			'url'  => $upload[ 'url' ],
+			'type' => $type
+		);
+		return apply_filters( 'wp_handle_upload', $struct, 'upload' );
 	}
 
 	function wxm_blog_options( $options ) {
