@@ -746,7 +746,8 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 * Retrieve users.
 	 *
 	 * The optional $filter parameter modifies the query used to retrieve users.
-	 * Accepted keys are 'number' (default: 50), 'offset' (default: 0), and 'role'.
+	 * Accepted keys are 'number' (default: 50), 'offset' (default: 0), 'role',
+	 * 'who', 'orderby', and 'order'.
 	 *
 	 * The optional $fields parameter specifies what fields will be included
 	 * in the response array.
@@ -776,23 +777,27 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( isset( $args[4] ) )
 			$fields = $args[4];
 		else
-			$fields = apply_filters( 'xmlrpc_default_user_fields', array( 'basic' ), 'wp.getUsers' );
+			$fields = apply_filters( 'xmlrpc_default_user_fields', array( 'all' ), 'wp.getUsers' );
 
 		if ( ! $user = $this->login( $username, $password ) )
 			return $this->error;
 
 		do_action( 'xmlrpc_call', 'wp.getUsers' );
 
-		if ( ! current_user_can( 'edit_users' ) )
-			return new IXR_Error( 401, __( 'Sorry, you cannot edit users.' ) );
+		if ( ! current_user_can( 'list_users' ) )
+			return new IXR_Error( 401, __( 'Sorry, you cannot list users.' ) );
 
-		$query = array();
-
-		// only retrieve IDs since wp_getUser will ignore anything else
-		$query['fields'] = array( 'ID' );
+		$query = array( 'fields' => 'all_with_meta' );
 
 		$query['number'] = ( isset( $filter['number'] ) ) ? absint( $filter['number'] ) : 50;
 		$query['offset'] = ( isset( $filter['offset'] ) ) ? absint( $filter['offset'] ) : 0;
+
+		if ( isset( $filter['orderby'] ) ) {
+			$query['orderby'] = $filter['orderby'];
+
+			if ( isset( $filter['order'] ) )
+				$query['order'] = $filter['order'];
+		}
 
 		if ( isset( $filter['role'] ) ) {
 			if ( get_role( $filter['role'] ) === null )
@@ -801,13 +806,17 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			$query['role'] = $filter['role'];
 		}
 
+		if ( isset( $filter['who'] ) ) {
+			$query['who'] = $filter['who'];
+		}
+
 		$users = get_users( $query );
 
 		$_users = array();
 		foreach ( $users as $user_data ) {
-			$_users[] = $this->_prepare_user( get_userdata( $user_data->ID ), $fields );
+			if ( current_user_can( 'edit_user', $user_data->ID ) )
+				$_users[] = $this->_prepare_user( $user_data, $fields );
 		}
-
 		return $_users;
 	}
 
