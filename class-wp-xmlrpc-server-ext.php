@@ -876,7 +876,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 	 *      - post_status (default: 'draft')
 	 *      - post_title
 	 *      - post_author
-	 *      - post_exerpt
+	 *      - post_excerpt
 	 *      - post_content
 	 *      - post_date_gmt | post_date
 	 *      - post_format
