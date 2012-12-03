@@ -64,6 +64,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			$methods['wp.newPost'] = array( &$this, 'wxm_wp_newPost' );
 			$methods['wp.editPost'] = array( &$this, 'wxm_wp_editPost' );
 			$methods['wp.getPosts'] = array( &$this, 'wxm_wp_getPosts' );
+			$methods['wp.getPost'] = array( &$this, 'wxm_wp_getPost' );
 		}
 
 		// array_merge will take the values defined in later arguments, so
@@ -198,7 +199,11 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			'post_password'     => $post['post_password'],
 			'post_excerpt'      => $post['post_excerpt'],
 			'post_content'      => $post['post_content'],
+			'post_parent'       => strval( $post['post_parent'] ),
+			'post_mime_type'    => $post['post_mime_type'],
 			'link'              => post_permalink( $post['ID'] ),
+			'guid'              => $post['guid'],
+			'menu_order'        => intval( $post['menu_order'] ),
 			'comment_status'    => $post['comment_status'],
 			'ping_status'       => $post['ping_status'],
 			'sticky'            => ( $post['post_type'] === 'post' && is_sticky( $post['ID'] ) ),
@@ -1410,7 +1415,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 		if ( ! current_user_can( $post_type->cap->edit_posts, $post_id ) )
 			return new IXR_Error( 401, __( 'Sorry, you cannot edit this post.' ) );
 
-		return $this->_prepare_post( $post, $fields );
+		return $this->wxm_prepare_post( $post, $fields );
 	}
 
 	/**
@@ -1502,7 +1507,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			if ( ! current_user_can( $post_type->cap->edit_posts, $post['ID'] ) )
 				continue;
 
-			$struct[] = $this->_prepare_post( $post, $fields );
+			$struct[] = $this->wxm_prepare_post( $post, $fields );
 		}
 
 		return $struct;
@@ -2132,7 +2137,7 @@ class wp_xmlrpc_server_ext extends wp_xmlrpc_server {
 			if ( wp_is_post_autosave( $revision ) )
 				continue;
 
-			$struct[] = $this->_prepare_post( get_object_vars( $revision ), $fields );
+			$struct[] = $this->wxm_prepare_post( get_object_vars( $revision ), $fields );
 		}
 
 		return $struct;
